@@ -5,15 +5,16 @@
 
 /* CSS Variables - Color Scheme from Ella Rises (matching ellarises.org exactly) */
 :root {
-    /* Primary Orange Colors - matching actual website */
+    /* Primary Orange Colors - matching actual website (refined from Wix site) */
     --primary-orange: #FF6B35;
     --secondary-orange: #FF8C42;
     --warm-orange: #FFA07A;
     --dark-orange: #D84315;
     --accent-coral: #FF7043;
     --orange-light: #FFB88C;
+    --mariposa-orange: #FF6B35; /* Specific orange from mariposa branding */
     
-    /* Neutral Colors */
+    /* Neutral Colors - matching Wix site */
     --dark-brown: #5D4037;
     --light-cream: #FFF8E1;
     --white: #FFFFFF;
@@ -21,28 +22,53 @@
     --medium-gray: #6C757D;
     --dark-gray: #343A40;
     --text-dark: #212529;
+    --text-secondary: #6C757D;
     
     /* Status Colors */
     --success-green: #4CAF50;
     --error-red: #F44336;
     --warning-yellow: #FFC107;
     
-    /* Background Overlays (matching website underlay colors) */
+    /* Background Overlays (matching website underlay colors from Wix) */
     --overlay-light: rgba(255, 255, 255, 0.95);
-    --overlay-orange: rgba(255, 107, 53, 0.1);
+    --overlay-orange: rgba(255, 107, 53, 0.15);
     --overlay-dark: rgba(0, 0, 0, 0.3);
+    --overlay-pink: rgba(255, 182, 193, 0.1); /* Light pink overlay seen on site */
 }
 
-/* Reset and Base Styles */
+/* Reset and Base Styles - Matching Wix/ellarises.org */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+a, abbr, acronym, address, applet, b, big, blockquote, button, caption, center, cite, code, dd, del, dfn, div, dl, dt, em, fieldset, font, footer, form, h1, h2, h3, h4, h5, h6, header, i, iframe, img, ins, kbd, label, legend, li, nav, object, ol, p, pre, q, s, samp, section, small, span, strike, strong, sub, sup, table, tbody, td, tfoot, th, thead, title, tr, tt, u, ul, var {
+    background: transparent;
+    border: 0;
+    margin: 0;
+    outline: 0;
+    padding: 0;
+    vertical-align: baseline;
+}
+
+input, select, textarea {
+    box-sizing: border-box;
+    font-family: Helvetica, Arial, sans-serif;
+}
+
+ol, ul {
+    list-style: none;
+}
+
+a {
+    cursor: pointer;
+    text-decoration: none;
+}
+
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    line-height: 1.7;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.6;
     color: var(--text-dark);
     background-color: var(--white);
     min-height: 100vh;
@@ -51,6 +77,8 @@ body {
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: auto;
+    overflow-y: scroll;
 }
 
 /* Header and Navigation */
@@ -191,11 +219,13 @@ body {
     padding: 2rem;
 }
 
-/* Full-width sections */
+/* Full-width sections - Matching Wix layout */
 .section-full {
     width: 100%;
     padding: 4rem 0;
-    margin: 3rem 0;
+    margin: 0;
+    position: relative;
+    isolation: isolate;
 }
 
 .section-full.orange-bg {
@@ -213,6 +243,7 @@ body {
     bottom: 0;
     background: linear-gradient(135deg, rgba(255, 107, 53, 0.95), rgba(255, 140, 66, 0.95));
     z-index: 0;
+    pointer-events: none;
 }
 
 .section-full.orange-bg > * {
@@ -224,22 +255,33 @@ body {
     background-color: var(--light-gray);
 }
 
-/* Page Headers */
+.section-full.pink-bg {
+    background-color: rgba(255, 182, 193, 0.1);
+    position: relative;
+}
+
+/* Page Headers - Matching Wix typography */
 .page-header {
     margin-bottom: 2rem;
     padding-bottom: 1rem;
-    border-bottom: 3px solid var(--primary-orange);
+    border-bottom: none;
 }
 
 .page-header h1 {
-    color: var(--primary-orange);
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text-dark);
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
 }
 
 .page-header p {
-    color: var(--medium-gray);
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text-secondary);
     font-size: 1.1rem;
+    font-weight: 400;
 }
 
 /* Buttons */
@@ -417,19 +459,20 @@ tbody tr:last-child td {
     border-bottom: 2px solid var(--light-gray);
 }
 
-/* Landing Page Styles */
+/* Landing Page Styles - Matching Wix/ellarises.org */
 .hero-section {
     background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
     color: var(--white);
     padding: 5rem 2rem;
     text-align: center;
-    border-radius: 12px;
+    border-radius: 0;
     margin-bottom: 4rem;
     position: relative;
     overflow: hidden;
+    width: 100%;
 }
 
-/* Color Underlay matching website */
+/* Color Underlay matching website - Wix style */
 .hero-section::before {
     content: '';
     position: absolute;
@@ -437,8 +480,9 @@ tbody tr:last-child td {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.9), rgba(255, 140, 66, 0.9));
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.95), rgba(255, 140, 66, 0.95));
     z-index: 0;
+    pointer-events: none;
 }
 
 .hero-section::after {
@@ -451,6 +495,7 @@ tbody tr:last-child td {
     background: url('/images/mariposa-pattern.png') repeat;
     opacity: 0.08;
     z-index: 1;
+    pointer-events: none;
 }
 
 .hero-section > * {
@@ -458,9 +503,10 @@ tbody tr:last-child td {
     z-index: 2;
 }
 
-/* Color underlay for sections */
+/* Color underlay for sections - Matching Wix implementation */
 .color-underlay {
     position: relative;
+    isolation: isolate;
 }
 
 .color-underlay::before {
@@ -473,6 +519,7 @@ tbody tr:last-child td {
     background: var(--overlay-orange);
     z-index: 0;
     border-radius: inherit;
+    pointer-events: none;
 }
 
 .color-underlay > * {
@@ -480,22 +527,46 @@ tbody tr:last-child td {
     z-index: 1;
 }
 
+/* Wix-style color underlay data attribute */
+[data-testid="colorUnderlay"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--overlay-orange);
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+}
+
+[data-testid="colorUnderlay"] + *,
+*:has([data-testid="colorUnderlay"]) > *:not([data-testid="colorUnderlay"]) {
+    position: relative;
+    z-index: 1;
+}
+
 .hero-section h1 {
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 3.5rem;
     margin-bottom: 1.5rem;
     color: var(--white);
     font-weight: 700;
     line-height: 1.2;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-shadow: none;
+    letter-spacing: -0.02em;
 }
 
 .hero-section p {
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 1.35rem;
     margin-bottom: 2.5rem;
     max-width: 800px;
     margin-left: auto;
     margin-right: auto;
     line-height: 1.6;
+    font-weight: 400;
 }
 
 .hero-image {
@@ -541,14 +612,15 @@ tbody tr:last-child td {
 
 .program-card {
     background-color: var(--white);
-    border-radius: 12px;
+    border-radius: 0;
     padding: 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     text-align: center;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: none;
     position: relative;
+    isolation: isolate;
 }
 
 .program-card::before {
@@ -566,12 +638,12 @@ tbody tr:last-child td {
 }
 
 .program-card:hover::before {
-    opacity: 1;
+    opacity: 0.3;
 }
 
 .program-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 8px 20px rgba(255, 107, 53, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .program-card > * {
@@ -591,16 +663,21 @@ tbody tr:last-child td {
 }
 
 .program-card h3 {
-    color: var(--primary-orange);
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text-dark);
     margin-bottom: 1rem;
     font-size: 1.75rem;
     font-weight: 700;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
 }
 
 .program-card p {
+    font-family: Arial, Helvetica, sans-serif;
     color: var(--text-dark);
     line-height: 1.7;
     margin-bottom: 1.5rem;
+    font-weight: 400;
 }
 
 .program-card .btn {
@@ -785,15 +862,4 @@ tbody tr:last-child td {
     z-index: 1;
 }
 
-/* Data attribute selector for color underlay matching website */
-[data-testid="colorUnderlay"] {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--overlay-orange);
-    z-index: 0;
-    border-radius: inherit;
-}
 
