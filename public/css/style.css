@@ -1087,6 +1087,10 @@ footer.main-footer h4 {
     .section-full {
         padding: 2rem 1rem;
     }
+
+    .programs-images-section > div {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1123,6 +1127,10 @@ footer.main-footer h4 {
 
     .program-card h3 {
         font-size: 1.5rem;
+    }
+
+    .programs-images-section > div {
+        grid-template-columns: 1fr !important;
     }
 }
 
