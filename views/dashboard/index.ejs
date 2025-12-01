@@ -1,36 +1,81 @@
 <%- include('../partials/header', { title: 'Dashboard - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
 
-<div class="page-header">
-    <h1>Dashboard</h1>
-    <p>Track program effectiveness and impact metrics</p>
-</div>
-
-<div class="card">
-    <h2 class="card-header">Impact KPIs</h2>
-    <p>This dashboard will display key performance indicators including:</p>
-    <ul style="list-style: disc; margin-left: 2rem; line-height: 2;">
-        <li>STEAM field major post-secondary graduation rate</li>
-        <li>STEAM field post-college job rate</li>
-        <li>Event effectiveness metrics</li>
-        <li>Participant satisfaction scores</li>
-        <li>Milestone achievement tracking</li>
-    </ul>
-    <p style="margin-top: 1rem;"><strong>Note:</strong> The Tableau dashboard will be embedded here once available.</p>
-</div>
-
-<div class="card mt-2">
-    <h2 class="card-header">Dashboard Placeholder</h2>
-    <p>This area will contain the embedded Tableau dashboard with interactive filters for:</p>
-    <ul style="list-style: disc; margin-left: 2rem; line-height: 2;">
-        <li>Event type filtering</li>
-        <li>Participant demographics</li>
-        <li>Time period selection</li>
-        <li>Program type filtering</li>
-    </ul>
-    <div style="margin-top: 2rem; padding: 3rem; background-color: var(--light-gray); border-radius: 8px; text-align: center;">
-        <p style="font-size: 1.2rem; color: var(--medium-gray);">Tableau Dashboard will be embedded here</p>
+<% if (typeof user !== 'undefined' && user.role === 'manager') { %>
+    <!-- Manager Dashboard -->
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Track program effectiveness and impact metrics</p>
     </div>
-</div>
+
+    <div class="card">
+        <h2 class="card-header">Impact KPIs</h2>
+        <p>This dashboard will display key performance indicators including:</p>
+        <ul style="list-style: disc; margin-left: 2rem; line-height: 2;">
+            <li>STEAM field major post-secondary graduation rate</li>
+            <li>STEAM field post-college job rate</li>
+            <li>Event effectiveness metrics</li>
+            <li>Participant satisfaction scores</li>
+            <li>Milestone achievement tracking</li>
+        </ul>
+        <p style="margin-top: 1rem;"><strong>Note:</strong> The Tableau dashboard will be embedded here once available.</p>
+    </div>
+
+    <div class="card mt-2">
+        <h2 class="card-header">Dashboard Placeholder</h2>
+        <p>This area will contain the embedded Tableau dashboard with interactive filters for:</p>
+        <ul style="list-style: disc; margin-left: 2rem; line-height: 2;">
+            <li>Event type filtering</li>
+            <li>Participant demographics</li>
+            <li>Time period selection</li>
+            <li>Program type filtering</li>
+        </ul>
+        <div style="margin-top: 2rem; padding: 3rem; background-color: var(--light-gray); border-radius: 8px; text-align: center;">
+            <p style="font-size: 1.2rem; color: var(--medium-gray);">Tableau Dashboard will be embedded here</p>
+        </div>
+    </div>
+<% } else { %>
+    <!-- User Dashboard - Show Registrations -->
+    <div class="page-header">
+        <h1>My Dashboard</h1>
+        <p>Welcome, <%= user.username %>! View your program registrations.</p>
+    </div>
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 class="card-header" style="margin: 0;">My Program Registrations</h2>
+            <a href="/register" class="btn btn-primary">Register for Another Program</a>
+        </div>
+        
+        <% if (typeof registrations !== 'undefined' && registrations.length > 0) { %>
+            <div class="registrations-list">
+                <% registrations.forEach(reg => { %>
+                    <div class="registration-item" style="padding: 1.5rem; margin-bottom: 1rem; background: var(--pink-bg); border-radius: 8px; border-left: 4px solid var(--coral);">
+                        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);"><%= reg.program %></h3>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                            Registered on <%= new Date(reg.registrationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                        </p>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div style="padding: 3rem; text-align: center; background: var(--pink-bg); border-radius: 8px;">
+                <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    You are not currently registered for any programs.
+                </p>
+                <a href="/register" class="btn btn-primary">Register for a Program</a>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="card mt-2">
+        <h2 class="card-header">Quick Actions</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+            <a href="/register" class="btn btn-secondary" style="text-align: center; padding: 1rem;">Register for Program</a>
+            <a href="/programs" class="btn btn-secondary" style="text-align: center; padding: 1rem;">View All Programs</a>
+            <a href="/contact" class="btn btn-secondary" style="text-align: center; padding: 1rem;">Contact Us</a>
+        </div>
+    </div>
+<% } %>
 
 <%- include('../partials/footer') %>
 

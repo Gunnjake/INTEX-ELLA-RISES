@@ -6,19 +6,19 @@
         <h1 class="hero-title">WELCOME TO</h1>
         <div class="hero-images-circle">
             <div class="circle-image-wrapper">
-                <img src="/images/BF_Single_RedDress.png" alt="Ballet Folklorico" class="circle-image" onerror="this.style.display='none';">
+                <img src="/images/ballet-folklorico.avif" alt="Ballet Folklorico" class="circle-image" onerror="this.onerror=null; this.src='/images/ballet-folklorico-single.png';">
             </div>
             <div class="circle-image-wrapper">
-                <img src="/images/e5f869_6dc28a33a201440382867c6e189ee351~mv2.png" alt="Art Program" class="circle-image" onerror="this.style.display='none';">
+                <img src="/images/ballet-folklorico-single.png" alt="Art Program" class="circle-image" onerror="this.style.display='none';">
             </div>
             <div class="circle-image-wrapper logo-center">
-                <img src="/images/Ella Rises Logo.png" alt="Ella Rises Logo" class="circle-image logo-image" onerror="this.style.display='none';">
+                <img src="/images/ella-rises-logo-hero.png" alt="Ella Rises Logo" class="circle-image logo-image" onerror="this.onerror=null; this.src='/images/ella-rises-logo.png';">
             </div>
             <div class="circle-image-wrapper">
-                <img src="/images/Mariachi_Single.png" alt="Mariachi" class="circle-image" onerror="this.style.display='none';">
+                <img src="/images/mariachi.avif" alt="Mariachi" class="circle-image" onerror="this.onerror=null; this.src='/images/mariachi-single.png';">
             </div>
             <div class="circle-image-wrapper">
-                <img src="/images/e5f869_6c230c9be74a4edbb0504302aaf18465~mv2.jpg" alt="STEAM Workshop" class="circle-image" onerror="this.style.display='none';">
+                <img src="/images/steam-workshop.jpg" alt="STEAM Workshop" class="circle-image" onerror="this.style.display='none';">
             </div>
         </div>
         <p class="hero-description">Inviting young women to pursue higher education and embrace their heritage by providing culturally rooted programs and educational experiences.</p>
@@ -26,20 +26,20 @@
 </div>
 
 <!-- Girls Banner Image -->
-<div class="banner-section" style="width: 100%; margin: 0; padding: 0;">
-    <img src="/images/banner of girls.avif" alt="Ella Rises Participants" class="banner-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-    <div class="image-placeholder large" style="display: none; width: 100%;">
+<div class="banner-section">
+    <img src="/images/banner-girls.avif" alt="Ella Rises Participants" class="banner-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <div class="image-placeholder large" style="display: none; width: 100%; min-height: 400px;">
         <div>Banner of Girls<br><small>Placeholder for banner image</small></div>
     </div>
 </div>
 
-<div class="section-full orange-bg" style="text-align: center; padding: 3rem 2rem;">
+<div class="section-full orange-bg" style="text-align: center;">
     <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: white;">Empowering the future generation of women.</h2>
-    <img src="/images/Mariposa naranja ella_edited.png" alt="Mariposa Naranja" style="max-width: 200px; height: auto; margin: 2rem 0;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+    <img src="/images/butterfly-orange.png" alt="Mariposa Naranja" style="max-width: 200px; height: auto; margin: 2rem 0;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
     <div class="image-placeholder medium" style="display: none; margin: 2rem auto; max-width: 200px;">
         <div>Mariposa Naranja<br><small>Orange Butterfly Image</small></div>
     </div>
-    <p style="font-size: 1.2rem; max-width: 800px; margin: 2rem auto;">Our signature programs and the Ella Rises Summit serve over 150 young women each year!</p>
+    <p style="font-size: 1.2rem; width: 100%; margin: 2rem auto; padding: 0 2rem; max-width: none;">Our signature programs and the Ella Rises Summit serve over 150 young women each year!</p>
 </div>
 
 <div class="page-header" style="margin-top: 4rem;">
@@ -47,51 +47,60 @@
 </div>
 
 <div class="programs-grid">
-    <div class="program-card">
-        <img src="/images/BF_Single_RedDress.png" alt="Ballet Folklorico" class="program-card-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="image-placeholder" style="display: none; height: 200px; margin: 0;">
+    <div class="program-card" onclick="window.location.href='/programs'">
+        <img src="/images/ballet-folklorico.avif" alt="Ballet Folklorico" class="program-card-image" onerror="this.onerror=null; this.src='/images/ballet-folklorico-single.png'; this.nextElementSibling.style.display='none';">
+        <div class="image-placeholder" style="display: none; height: 400px; margin: 0;">
             <div>Ballet Folklorico Image</div>
         </div>
         <div class="program-card-content">
-            <h3>BALLET FOLKLORICO</h3>
-            <p>Our art program fosters joy, confidence, and creative self-expression rooted in culture through Latin American Folk dance.</p>
-            <a href="/contact" class="btn btn-primary">Enroll</a>
-            <a href="/donate" class="btn btn-secondary" style="margin-left: 0.5rem;">Donate</a>
+            <div class="program-card-overlay" onclick="event.stopPropagation();">
+                <h3>BALLET FOLKLORICO</h3>
+                <p>Our art program fosters joy, confidence, and creative self-expression rooted in culture through Latin American Folk dance.</p>
+                <a href="/register" class="btn btn-primary" onclick="event.stopPropagation();">Enroll</a>
+                <a href="https://givebutter.com/EllaRises" target="_blank" rel="noopener noreferrer" class="btn btn-primary" onclick="event.stopPropagation();">Donate</a>
+            </div>
         </div>
     </div>
-    <div class="program-card">
-        <img src="/images/Mariachi_Single.png" alt="Mariachi" class="program-card-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="image-placeholder" style="display: none; height: 200px; margin: 0;">
+    <div class="program-card" onclick="window.location.href='/programs?program=1'">
+        <img src="/images/mariachi.avif" alt="Mariachi" class="program-card-image" onerror="this.onerror=null; this.src='/images/mariachi-single.png'; this.nextElementSibling.style.display='none';">
+        <div class="image-placeholder" style="display: none; height: 400px; margin: 0;">
             <div>Mariachi Image</div>
         </div>
         <div class="program-card-content">
-            <h3>MARIACHI</h3>
-            <p>We love mariachi music so we have created a female mariachi band! Our mariachi program relaunched in spring of 2025. All levels of music proficiency are welcome! Join us!</p>
-            <a href="/contact" class="btn btn-primary">Enroll</a>
-            <a href="/donate" class="btn btn-secondary" style="margin-left: 0.5rem;">Donate</a>
+            <div class="program-card-overlay" onclick="event.stopPropagation();">
+                <h3>MARIACHI</h3>
+                <p>We love mariachi music so we have created a female mariachi band! Our mariachi program relaunched in spring of 2025. All levels of music proficiency are welcome! Join us!</p>
+                <a href="/register" class="btn btn-primary" onclick="event.stopPropagation();">Enroll</a>
+                <a href="https://givebutter.com/EllaRises" target="_blank" rel="noopener noreferrer" class="btn btn-primary" onclick="event.stopPropagation();">Donate</a>
+            </div>
         </div>
     </div>
-    <div class="program-card">
-        <img src="/images/ER Summer Summit 2022-165.jpg" alt="Ella Rises Summit" class="program-card-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="image-placeholder" style="display: none; height: 200px; margin: 0;">
+    <div class="program-card" onclick="window.location.href='/programs?program=2'">
+        <img src="/images/summit-2022.jpg" alt="Ella Rises Summit" class="program-card-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='none';">
+        <div class="image-placeholder" style="display: none; height: 400px; margin: 0;">
             <div>Ella Rises Summit Image</div>
         </div>
         <div class="program-card-content">
-            <h3>ELLA RISES SUMMIT</h3>
-            <p>The Ella Rises Summit is a day camp packed with activities to give a glimpse of the Ella Rises Experience: art, STEM, and a focus on education! We conclude the day camp with a tour of a local university or technical college!</p>
-            <a href="/donate" class="btn btn-primary">Donate</a>
+            <div class="program-card-overlay" onclick="event.stopPropagation();">
+                <h3>SUMMIT + EDUCATIONAL PATHWAYS</h3>
+                <p>The Ella Rises Summit is a day camp packed with activities to give a glimpse of the Ella Rises Experience: art, STEM, and a focus on education! We conclude the day camp with a tour of a local university or technical college!</p>
+                <a href="/register" class="btn btn-primary" onclick="event.stopPropagation();">Enroll</a>
+                <a href="https://givebutter.com/EllaRises" target="_blank" rel="noopener noreferrer" class="btn btn-primary" onclick="event.stopPropagation();">Donate</a>
+            </div>
         </div>
     </div>
-    <div class="program-card">
-        <img src="/images/ER STEM Workshop Aug 2022-09.jpg" alt="STEAM" class="program-card-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="image-placeholder" style="display: none; height: 200px; margin: 0;">
+    <div class="program-card" onclick="window.location.href='/programs?program=3'">
+        <img src="/images/steam-workshop.jpg" alt="STEAM" class="program-card-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='none';">
+        <div class="image-placeholder" style="display: none; height: 400px; margin: 0;">
             <div>STEAM Workshop Image</div>
         </div>
         <div class="program-card-content">
-            <h3>STEAM</h3>
-            <p>We facilitate virtual and in-person STEAM (science, technology, engineering, art and math) workshops to develop and guide participant inquiry, discussion, and critical thinking of STEM related careers.</p>
-            <a href="/contact" class="btn btn-primary">Enroll</a>
-            <a href="/donate" class="btn btn-secondary" style="margin-left: 0.5rem;">Donate</a>
+            <div class="program-card-overlay" onclick="event.stopPropagation();">
+                <h3>STEAM</h3>
+                <p>We facilitate virtual and in-person STEAM (science, technology, engineering, art and math) workshops to develop and guide participant inquiry, discussion, and critical thinking of STEM related careers.</p>
+                <a href="/register" class="btn btn-primary" onclick="event.stopPropagation();">Enroll</a>
+                <a href="https://givebutter.com/EllaRises" target="_blank" rel="noopener noreferrer" class="btn btn-primary" onclick="event.stopPropagation();">Donate</a>
+            </div>
         </div>
     </div>
 </div>

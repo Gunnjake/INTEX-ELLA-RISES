@@ -253,11 +253,15 @@ body {
 
 /* Full-width sections - Matching Wix layout */
 .section-full {
-    width: 100%;
+    width: 100vw;
     padding: 4rem 0;
     margin: 0;
     position: relative;
     isolation: isolate;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
 }
 
 .section-full.orange-bg {
@@ -544,16 +548,22 @@ tbody tr:last-child td {
 /* New Hero Section with Circular Images - Matching actual website */
 .hero-section-pink {
     background-color: var(--pink-bg);
-    padding: var(--space-xl) var(--space-md);
+    padding: var(--space-xl) 0;
     text-align: center;
-    width: 100%;
+    width: 100vw;
+    margin: 0;
     margin-bottom: 0;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
 }
 
 .hero-content {
-    max-width: var(--container-max-width);
+    width: 100%;
     margin: 0 auto;
-    padding: var(--space-lg) 0;
+    padding: var(--space-lg) var(--space-md);
 }
 
 .hero-title {
@@ -575,8 +585,8 @@ tbody tr:last-child td {
 }
 
 .circle-image-wrapper {
-    width: 150px;
-    height: 150px;
+    width: 180px;
+    height: 180px;
     border-radius: 50%;
     overflow: hidden;
     position: relative;
@@ -586,9 +596,10 @@ tbody tr:last-child td {
 }
 
 .circle-image-wrapper.logo-center {
-    width: 180px;
-    height: 180px;
+    width: 280px;
+    height: 280px;
     z-index: 1;
+    background-color: var(--white);
 }
 
 .circle-image {
@@ -600,33 +611,44 @@ tbody tr:last-child td {
 
 .logo-image {
     object-fit: contain;
-    padding: var(--space-sm);
-    background-color: var(--text-dark);
+    padding: var(--space-md);
+    background-color: var(--white);
+    width: 100%;
+    height: 100%;
 }
 
 .hero-description {
     font-family: var(--font-body), Arial, Helvetica, sans-serif;
     font-size: 1.2rem;
     color: var(--text-dark);
-    max-width: 800px;
+    width: 100%;
     margin: var(--space-xl) auto 0;
+    padding: 0 var(--space-md);
     line-height: 1.7;
     font-weight: 400;
 }
 
 /* Banner Section */
 .banner-section {
-    width: 100%;
+    width: 100vw;
     margin: 0;
     padding: 0;
     overflow: hidden;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
 }
 
 .banner-image {
     width: 100%;
-    height: auto;
+    height: 100%;
+    min-height: 400px;
+    max-height: 600px;
     display: block;
     object-fit: cover;
+    object-position: center;
 }
 
 /* Social Media Icons */
@@ -651,6 +673,7 @@ tbody tr:last-child td {
     height: 32px;
     object-fit: contain;
     display: block;
+    filter: brightness(0) invert(1);
 }
 
 /* Color underlay for sections - Matching Wix implementation */
@@ -755,9 +778,13 @@ tbody tr:last-child td {
 
 .programs-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 2.5rem;
     margin: 3rem 0;
+    max-width: var(--container-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 2rem;
 }
 
 .program-card {
@@ -765,30 +792,22 @@ tbody tr:last-child td {
     border-radius: 0;
     padding: 0;
     box-shadow: var(--card-shadow);
-    text-align: center;
+    text-align: left;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     overflow: hidden;
-    border: 1px solid var(--border-light);
+    border: none;
     position: relative;
     isolation: isolate;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    color: inherit;
+    height: 500px;
 }
 
-.program-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent, var(--overlay-orange));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 1;
-    pointer-events: none;
-}
-
-.program-card:hover::before {
-    opacity: 0.3;
+.program-card a {
+    text-decoration: none;
+    color: inherit;
 }
 
 .program-card:hover {
@@ -796,42 +815,101 @@ tbody tr:last-child td {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.program-card > * {
-    position: relative;
-    z-index: 2;
+.program-card:hover .program-card-overlay {
+    background: rgba(158, 195, 236, 1);
 }
 
 .program-card-image {
     width: 100%;
-    height: 200px;
+    height: 100%;
     object-fit: cover;
     display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .program-card-content {
-    padding: 2rem;
+    padding: 0;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
 }
 
-.program-card h3 {
+/* Program Card Overlay - Clean Implementation */
+.program-card-overlay {
+    background: rgba(158, 195, 236, 0.95);
+    color: var(--white);
+    padding: 1.25rem 1.75rem;
+    z-index: 3;
+    border: none;
+    position: relative;
+    text-align: center;
+}
+
+.program-card-overlay h3 {
     font-family: var(--font-header), serif;
-    color: var(--text-dark);
-    margin-bottom: 1rem;
-    font-size: 1.75rem;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.01em;
     text-transform: uppercase;
+    display: block !important;
+    text-align: center;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.program-card-overlay p {
+    font-family: var(--font-body), Arial, Helvetica, sans-serif;
+    color: var(--white);
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+    font-weight: 400;
+    font-size: 0.85rem;
+    display: none;
+}
+
+.program-card-overlay .btn {
+    background-color: var(--white);
+    color: var(--text-dark);
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+    display: none;
+    margin-right: 0.75rem;
+    border: none;
+    text-decoration: none;
+}
+
+.program-card-overlay .btn:hover {
+    background-color: var(--text-dark);
+    color: var(--white);
+}
+
+/* Show description and buttons on hover */
+.program-card:hover .program-card-overlay p {
+    display: block;
+}
+
+.program-card:hover .program-card-overlay .btn {
+    display: inline-block;
+}
+
+.program-card h3 {
+    display: none;
 }
 
 .program-card p {
-    font-family: var(--font-body), Arial, Helvetica, sans-serif;
-    color: var(--text-dark);
-    line-height: 1.7;
-    margin-bottom: 1.5rem;
-    font-weight: 400;
+    display: none;
 }
 
 .program-card .btn {
-    margin-top: 0.5rem;
+    display: none;
 }
 
 /* Footer */
@@ -859,7 +937,8 @@ footer.main-footer h4 {
     max-width: 200px;
     height: auto;
     margin-bottom: 1.5rem;
-    filter: brightness(0) invert(1);
+    background: transparent;
+    border-radius: 0;
 }
 
 .footer-container {

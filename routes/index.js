@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { requireAuth, requireManager } = require('../middleware/auth');
-// const db = require('../db'); // Will be uncommented when database is ready
+const db = require('../db');
 
 // ============================================================================
 // PUBLIC ROUTES (No authentication required)
@@ -44,24 +44,154 @@ router.post('/contact', (req, res) => {
     res.redirect('/contact');
 });
 
-// Public donation page
-router.get('/donate', (req, res) => {
-    res.render('public/donate', {
-        title: 'Donate - Ella Rises',
+// Programs page with carousel
+router.get('/programs', (req, res) => {
+    const programIndex = parseInt(req.query.program) || 0;
+    res.render('public/programs', {
+        title: 'Programs - Ella Rises',
+        user: req.session.user || null,
+        programIndex: programIndex
+    });
+});
+
+// Registration page
+router.get('/register', (req, res) => {
+    res.render('public/register', {
+        title: 'Register - Ella Rises',
         user: req.session.user || null
     });
 });
 
-// Donation form submission
-router.post('/donate', (req, res) => {
-    // TODO: Save donation to database
-    const { donor_name, donor_email, amount, payment_method } = req.body;
+// Registration form submission
+router.post('/register', async (req, res) => {
+    const { firstName, lastName, email, phone, age, program, city, state, zip, school, password, confirmPassword } = req.body;
     
-    req.session.messages = [{ 
-        type: 'success', 
-        text: `Thank you ${donor_name} for your donation of $${amount}! Your contribution makes a difference.` 
-    }];
-    res.redirect('/donate');
+    try {
+        // If user is logged in, use their account
+        if (req.session.user) {
+            const userId = req.session.user.id;
+            
+            // TODO: Save registration to database when connected
+            // const registration = await db('Registrations').insert({
+            //     ParticipantID: userId,
+            //     EventTemplateID: programId, // Need to map program name to EventTemplateID
+            //     RegistrationDate: new Date()
+            // });
+            
+            req.session.messages = [{ 
+                type: 'success', 
+                text: `Thank you! You've been registered for ${program}.` 
+            }];
+            return res.redirect('/register');
+        }
+        
+        // New user registration - create account
+        if (!password || password.length < 6) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'Password must be at least 6 characters long.' 
+            }];
+            return res.redirect('/register');
+        }
+        
+        if (password !== confirmPassword) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'Passwords do not match.' 
+            }];
+            return res.redirect('/register');
+        }
+        
+        // TODO: Save to database when connected
+        // Check if user already exists
+        // const existingUser = await db('Users').where({ Email: email }).first();
+        // if (existingUser) {
+        //     req.session.messages = [{ 
+        //         type: 'error', 
+        //         text: 'An account with this email already exists. Please login instead.' 
+        //     }];
+        //     return res.redirect('/login');
+        // }
+        
+        // Create user account
+        // const passwordHash = await bcrypt.hash(password, 10);
+        // const newUser = await db('Users').insert({
+        //     Username: email.split('@')[0],
+        //     Email: email,
+        //     Password_Hash: passwordHash,
+        //     Role: 'user',
+        //     FirstName: firstName,
+        //     LastName: lastName,
+        //     Phone: phone
+        // }).returning('*');
+        
+        // Create participant record
+        // const newParticipant = await db('Participants').insert({
+        //     ParticipantEmail: email,
+        //     ParticipantFirstName: firstName,
+        //     ParticipantLastName: lastName,
+        //     ParticipantPhone: phone,
+        //     ParticipantDOB: new Date().getFullYear() - parseInt(age) + '-01-01',
+        //     ParticipantCity: city,
+        //     ParticipantState: state,
+        //     ParticipantZip: zip,
+        //     ParticipantSchoolOrEmployer: school,
+        //     ParticipantID: newUser[0].UserID
+        // });
+        
+        // Register for program
+        // const programEvent = await db('EventTemplates').where({ EventName: program }).first();
+        // if (programEvent) {
+        //     await db('Registrations').insert({
+        //         ParticipantID: newUser[0].UserID,
+        //         EventTemplateID: programEvent.EventTemplateID,
+        //         RegistrationDate: new Date()
+        //     });
+        // }
+        
+        // Auto-login the new user
+        // req.session.user = {
+        //     id: newUser[0].UserID,
+        //     username: newUser[0].Username,
+        //     email: newUser[0].Email,
+        //     role: newUser[0].Role,
+        //     firstName: firstName,
+        //     lastName: lastName
+        // };
+        
+        req.session.messages = [{ 
+            type: 'success', 
+            text: `Account created successfully! You've been registered for ${program}. You can now login to view your registrations.` 
+        }];
+        res.redirect('/login');
+    } catch (error) {
+        console.error('Registration error:', error);
+        req.session.messages = [{ 
+            type: 'error', 
+            text: 'There was an error processing your registration. Please try again.' 
+        }];
+        res.redirect('/register');
+    }
+});
+
+// API endpoint to get user's registrations
+router.get('/api/my-registrations', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        
+        // TODO: Query database when connected
+        // const registrations = await db('Registrations')
+        //     .join('EventTemplates', 'Registrations.EventTemplateID', 'EventTemplates.EventTemplateID')
+        //     .where({ 'Registrations.ParticipantID': userId })
+        //     .select('EventTemplates.EventName as program', 'Registrations.RegistrationDate as registrationDate')
+        //     .orderBy('Registrations.RegistrationDate', 'desc');
+        
+        // Placeholder for now
+        res.json({ registrations: [] });
+    } catch (error) {
+        console.error('Error fetching registrations:', error);
+        res.status(500).json({ error: 'Error fetching registrations' });
+    }
 });
 
 // 418 Teapot page (IS 404 requirement)
@@ -102,35 +232,61 @@ router.post('/login', async (req, res) => {
     }
     
     try {
-        // TODO: Query database for user
-        // const user = await db('users').where({ username }).first();
-        // if (!user) {
-        //     return res.render('auth/login', {
-        //         title: 'Login - Ella Rises',
-        //         error: 'Invalid username or password',
-        //         user: null
-        //     });
-        // }
-        // const validPassword = await bcrypt.compare(password, user.password_hash);
-        // if (!validPassword) {
-        //     return res.render('auth/login', {
-        //         title: 'Login - Ella Rises',
-        //         error: 'Invalid username or password',
-        //         user: null
-        //     });
-        // }
-        
-        // Placeholder authentication - REMOVE when database is connected
-        req.session.user = {
-            id: 1,
-            username: username,
-            role: username.toLowerCase().includes('manager') ? 'manager' : 'user',
-            email: 'user@example.com'
-        };
-        
-        const returnTo = req.session.returnTo || '/dashboard';
-        delete req.session.returnTo;
-        res.redirect(returnTo);
+        // Database authentication
+        try {
+            const user = await db('Users').where({ username }).first();
+            if (!user) {
+                return res.render('auth/login', {
+                    title: 'Login - Ella Rises',
+                    error: 'Invalid username or password',
+                    user: null
+                });
+            }
+            const validPassword = await bcrypt.compare(password, user.password_hash);
+            if (!validPassword) {
+                return res.render('auth/login', {
+                    title: 'Login - Ella Rises',
+                    error: 'Invalid username or password',
+                    user: null
+                });
+            }
+            
+            req.session.user = {
+                id: user.userid,
+                username: user.username,
+                role: user.role,
+                email: user.email
+            };
+            
+            const returnTo = req.session.returnTo || '/dashboard';
+            delete req.session.returnTo;
+            res.redirect(returnTo);
+        } catch (dbError) {
+            // If Users table doesn't exist yet, use placeholder authentication
+            console.log('Database error (Users table may not exist):', dbError.message);
+            
+            // Temporary placeholder authentication for development
+            // TODO: Remove this when Users table is created in database
+            if (!username || !password) {
+                return res.render('auth/login', {
+                    title: 'Login - Ella Rises',
+                    error: 'Please provide both username and password',
+                    user: null
+                });
+            }
+            
+            // Simple placeholder: username containing "manager" = manager role, otherwise = user role
+            req.session.user = {
+                id: 1,
+                username: username,
+                role: username.toLowerCase().includes('manager') ? 'manager' : 'user',
+                email: `${username}@example.com`
+            };
+            
+            const returnTo = req.session.returnTo || '/dashboard';
+            delete req.session.returnTo;
+            res.redirect(returnTo);
+        }
         
     } catch (error) {
         console.error('Login error:', error);
@@ -156,28 +312,63 @@ router.get('/logout', (req, res) => {
 // DASHBOARD ROUTES (Requires authentication)
 // ============================================================================
 
-router.get('/dashboard', requireAuth, (req, res) => {
-    res.render('dashboard/index', {
-        title: 'Dashboard - Ella Rises',
-        user: req.session.user,
-        messages: req.session.messages || []
-    });
-    req.session.messages = [];
+router.get('/dashboard', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        
+        // TODO: Fetch user registrations when database is connected
+        // const registrations = await db('Registrations')
+        //     .join('EventTemplates', 'Registrations.EventTemplateID', 'EventTemplates.EventTemplateID')
+        //     .where({ 'Registrations.ParticipantID': userId })
+        //     .select('EventTemplates.EventName as program', 'Registrations.RegistrationDate as registrationDate')
+        //     .orderBy('Registrations.RegistrationDate', 'desc');
+        
+        // Placeholder for now
+        const registrations = [];
+        
+        res.render('dashboard/index', {
+            title: 'Dashboard - Ella Rises',
+            user: req.session.user,
+            messages: req.session.messages || [],
+            registrations: registrations
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        res.render('dashboard/index', {
+            title: 'Dashboard - Ella Rises',
+            user: req.session.user,
+            messages: [{ type: 'error', text: 'Error loading dashboard data.' }],
+            registrations: []
+        });
+    }
 });
 
 // ============================================================================
 // USER MAINTENANCE ROUTES (Manager only)
 // ============================================================================
 
-router.get('/users', requireAuth, requireManager, (req, res) => {
-    // TODO: const users = await db('users').select('*').orderBy('created_at', 'desc');
-    res.render('manager/users', {
-        title: 'User Maintenance - Ella Rises',
-        user: req.session.user,
-        users: [],
-        messages: req.session.messages || []
-    });
-    req.session.messages = [];
+router.get('/users', requireAuth, requireManager, async (req, res) => {
+    try {
+        const users = await db('Users').select('*').orderBy('created_at', 'desc');
+        res.render('manager/users', {
+            title: 'User Maintenance - Ella Rises',
+            user: req.session.user,
+            users: users,
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        // If Users table doesn't exist, show empty list
+        res.render('manager/users', {
+            title: 'User Maintenance - Ella Rises',
+            user: req.session.user,
+            users: [],
+            messages: [{ type: 'error', text: 'Users table not found. Please create the Users table in the database.' }]
+        });
+        req.session.messages = [];
+    }
 });
 
 router.get('/users/new', requireAuth, requireManager, (req, res) => {
@@ -190,8 +381,33 @@ router.get('/users/new', requireAuth, requireManager, (req, res) => {
 
 router.post('/users/new', requireAuth, requireManager, async (req, res) => {
     const { username, email, password, role } = req.body;
+    
+    // Validation
+    if (!username || !email || !password || !role) {
+        req.session.messages = [{ type: 'error', text: 'All fields are required.' }];
+        return res.redirect('/users/new');
+    }
+    
+    if (role !== 'manager' && role !== 'user') {
+        req.session.messages = [{ type: 'error', text: 'Invalid role. Must be "manager" or "user".' }];
+        return res.redirect('/users/new');
+    }
+    
     try {
-        // TODO: Validate, hash password, insert into database
+        // Hash password using bcrypt
+        const saltRounds = 10;
+        const password_hash = await bcrypt.hash(password, saltRounds);
+        
+        // Insert into database
+        await db('Users').insert({
+            username,
+            email,
+            password_hash,
+            role,
+            created_at: new Date(),
+            updated_at: new Date()
+        });
+        
         req.session.messages = [{ type: 'success', text: 'User created successfully' }];
         res.redirect('/users');
     } catch (error) {
@@ -204,11 +420,15 @@ router.post('/users/new', requireAuth, requireManager, async (req, res) => {
 router.get('/users/:id/edit', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
     try {
-        // TODO: const userData = await db('users').where({ id }).first();
+        const userData = await db('Users').where({ userid: id }).first();
+        if (!userData) {
+            req.session.messages = [{ type: 'error', text: 'User not found.' }];
+            return res.redirect('/users');
+        }
         res.render('manager/users-form', {
             title: 'Edit User - Ella Rises',
             user: req.session.user,
-            userData: null
+            userData: userData
         });
     } catch (error) {
         console.error('Error fetching user:', error);
@@ -220,8 +440,35 @@ router.get('/users/:id/edit', requireAuth, requireManager, async (req, res) => {
 router.post('/users/:id/update', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
     const { username, email, password, role } = req.body;
+    
+    // Validation
+    if (!username || !email || !role) {
+        req.session.messages = [{ type: 'error', text: 'Username, email, and role are required.' }];
+        return res.redirect(`/users/${id}/edit`);
+    }
+    
+    if (role !== 'manager' && role !== 'user') {
+        req.session.messages = [{ type: 'error', text: 'Invalid role. Must be "manager" or "user".' }];
+        return res.redirect(`/users/${id}/edit`);
+    }
+    
     try {
-        // TODO: Update user in database
+        // Update user in database
+        const updateData = {
+            username,
+            email,
+            role,
+            updated_at: new Date()
+        };
+        
+        // Only update password if provided
+        if (password && password.trim() !== '') {
+            const saltRounds = 10;
+            updateData.password_hash = await bcrypt.hash(password, saltRounds);
+        }
+        
+        await db('Users').where({ userid: id }).update(updateData);
+        
         req.session.messages = [{ type: 'success', text: 'User updated successfully' }];
         res.redirect('/users');
     } catch (error) {
@@ -234,7 +481,7 @@ router.post('/users/:id/update', requireAuth, requireManager, async (req, res) =
 router.post('/users/:id/delete', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
     try {
-        // TODO: await db('users').where({ id }).del();
+        await db('Users').where({ userid: id }).del();
         req.session.messages = [{ type: 'success', text: 'User deleted successfully' }];
         res.redirect('/users');
     } catch (error) {
@@ -248,21 +495,32 @@ router.post('/users/:id/delete', requireAuth, requireManager, async (req, res) =
 // PARTICIPANT ROUTES (View: public/common users, CRUD: manager only)
 // ============================================================================
 
-router.get('/participants', (req, res) => {
+router.get('/participants', async (req, res) => {
     // View-only access for everyone (no login required)
     // Managers see manager view, others see user view
     const user = req.session.user || null;
     const isManager = user && user.role === 'manager';
     const viewPath = isManager ? 'manager/participants' : 'user/participants';
     
-    // TODO: const participants = await db('participants').select('*').orderBy('enrollment_date', 'desc');
-    res.render(viewPath, {
-        title: 'Participants - Ella Rises',
-        user: user,
-        participants: [],
-        messages: req.session.messages || []
-    });
-    req.session.messages = [];
+    try {
+        const participants = await db('Participants').select('*').orderBy('ParticipantID', 'desc');
+        res.render(viewPath, {
+            title: 'Participants - Ella Rises',
+            user: user,
+            participants: participants,
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching participants:', error);
+        res.render(viewPath, {
+            title: 'Participants - Ella Rises',
+            user: user,
+            participants: [],
+            messages: [{ type: 'error', text: 'Error loading participants.' }]
+        });
+        req.session.messages = [];
+    }
 });
 
 // Manager-only routes for participants
@@ -349,20 +607,31 @@ router.post('/participants/:id/delete', requireAuth, async (req, res) => {
 // EVENT ROUTES (View: public/common users, CRUD: manager only)
 // ============================================================================
 
-router.get('/events', (req, res) => {
+router.get('/events', async (req, res) => {
     // View-only access for everyone (no login required)
     const user = req.session.user || null;
     const isManager = user && user.role === 'manager';
     const viewPath = isManager ? 'manager/events' : 'user/events';
     
-    // TODO: const events = await db('events').select('*').orderBy('event_date', 'desc');
-    res.render(viewPath, {
-        title: 'Events - Ella Rises',
-        user: user,
-        events: [],
-        messages: req.session.messages || []
-    });
-    req.session.messages = [];
+    try {
+        const events = await db('EventTemplates').select('*').orderBy('EventTemplateID', 'desc');
+        res.render(viewPath, {
+            title: 'Events - Ella Rises',
+            user: user,
+            events: events,
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        res.render(viewPath, {
+            title: 'Events - Ella Rises',
+            user: user,
+            events: [],
+            messages: [{ type: 'error', text: 'Error loading events.' }]
+        });
+        req.session.messages = [];
+    }
 });
 
 router.get('/events/new', requireAuth, (req, res) => {
@@ -448,24 +717,35 @@ router.post('/events/:id/delete', requireAuth, async (req, res) => {
 // SURVEY ROUTES (View: public/common users, CRUD: manager only)
 // ============================================================================
 
-router.get('/surveys', (req, res) => {
+router.get('/surveys', async (req, res) => {
     // View-only access for everyone (no login required)
     const user = req.session.user || null;
     const isManager = user && user.role === 'manager';
     const viewPath = isManager ? 'manager/surveys' : 'user/surveys';
     
-    // TODO: const surveys = await db('surveys')
-    //     .join('participants', 'surveys.participant_id', 'participants.id')
-    //     .join('events', 'surveys.event_id', 'events.id')
-    //     .select('surveys.*', 'participants.first_name', 'participants.last_name', 'events.event_name')
-    //     .orderBy('survey_date', 'desc');
-    res.render(viewPath, {
-        title: 'Post-Event Surveys - Ella Rises',
-        user: user,
-        surveys: [],
-        messages: req.session.messages || []
-    });
-    req.session.messages = [];
+    try {
+        const surveys = await db('Surveys')
+            .join('Registrations', 'Surveys.RegistrationID', 'Registrations.RegistrationID')
+            .join('Participants', 'Registrations.ParticipantID', 'Participants.ParticipantID')
+            .select('Surveys.*', 'Participants.ParticipantFirstName', 'Participants.ParticipantLastName')
+            .orderBy('Surveys.SurveySubmissionDate', 'desc');
+        res.render(viewPath, {
+            title: 'Post-Event Surveys - Ella Rises',
+            user: user,
+            surveys: surveys,
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching surveys:', error);
+        res.render(viewPath, {
+            title: 'Post-Event Surveys - Ella Rises',
+            user: user,
+            surveys: [],
+            messages: [{ type: 'error', text: 'Error loading surveys.' }]
+        });
+        req.session.messages = [];
+    }
 });
 
 router.get('/surveys/new', requireAuth, async (req, res) => {
@@ -559,23 +839,34 @@ router.post('/surveys/:id/delete', requireAuth, async (req, res) => {
 // MILESTONE ROUTES (View: public/common users, CRUD: manager only)
 // ============================================================================
 
-router.get('/milestones', (req, res) => {
+router.get('/milestones', async (req, res) => {
     // View-only access for everyone (no login required)
     const user = req.session.user || null;
     const isManager = user && user.role === 'manager';
     const viewPath = isManager ? 'manager/milestones' : 'user/milestones';
     
-    // TODO: const milestones = await db('milestones')
-    //     .join('participants', 'milestones.participant_id', 'participants.id')
-    //     .select('milestones.*', 'participants.first_name', 'participants.last_name')
-    //     .orderBy('achievement_date', 'desc');
-    res.render(viewPath, {
-        title: 'Milestones - Ella Rises',
-        user: user,
-        milestones: [],
-        messages: req.session.messages || []
-    });
-    req.session.messages = [];
+    try {
+        const milestones = await db('Milestones')
+            .join('Participants', 'Milestones.ParticipantID', 'Participants.ParticipantID')
+            .select('Milestones.*', 'Participants.ParticipantFirstName', 'Participants.ParticipantLastName')
+            .orderBy('Milestones.MilestoneDate', 'desc');
+        res.render(viewPath, {
+            title: 'Milestones - Ella Rises',
+            user: user,
+            milestones: milestones,
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching milestones:', error);
+        res.render(viewPath, {
+            title: 'Milestones - Ella Rises',
+            user: user,
+            milestones: [],
+            messages: [{ type: 'error', text: 'Error loading milestones.' }]
+        });
+        req.session.messages = [];
+    }
 });
 
 router.get('/milestones/new', requireAuth, async (req, res) => {
@@ -665,20 +956,34 @@ router.post('/milestones/:id/delete', requireAuth, async (req, res) => {
 // DONATION ROUTES (View: public/common users, CRUD: manager only)
 // ============================================================================
 
-router.get('/donations', (req, res) => {
+router.get('/donations', async (req, res) => {
     // View-only access for everyone (no login required)
     const user = req.session.user || null;
     const isManager = user && user.role === 'manager';
     const viewPath = isManager ? 'manager/donations' : 'user/donations';
     
-    // TODO: const donations = await db('donations').select('*').orderBy('donation_date', 'desc');
-    res.render(viewPath, {
-        title: 'Donations - Ella Rises',
-        user: user,
-        donations: [],
-        messages: req.session.messages || []
-    });
-    req.session.messages = [];
+    try {
+        const donations = await db('Donations')
+            .join('Participants', 'Donations.ParticipantID', 'Participants.ParticipantID')
+            .select('Donations.*', 'Participants.ParticipantFirstName', 'Participants.ParticipantLastName')
+            .orderBy('Donations.DonationDate', 'desc');
+        res.render(viewPath, {
+            title: 'Donations - Ella Rises',
+            user: user,
+            donations: donations,
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching donations:', error);
+        res.render(viewPath, {
+            title: 'Donations - Ella Rises',
+            user: user,
+            donations: [],
+            messages: [{ type: 'error', text: 'Error loading donations.' }]
+        });
+        req.session.messages = [];
+    }
 });
 
 router.get('/donations/new', requireAuth, (req, res) => {
