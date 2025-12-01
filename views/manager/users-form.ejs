@@ -1,0 +1,38 @@
+<%- include('../partials/header', { title: (typeof userData !== 'undefined' && userData.id) ? 'Edit User' : 'Add New User', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1><%= (typeof userData !== 'undefined' && userData.id) ? 'Edit User' : 'Add New User' %></h1>
+    <p><%= (typeof userData !== 'undefined' && userData.id) ? 'Update user information' : 'Create a new user account' %></p>
+</div>
+
+<div class="form-container">
+    <form action="<%= (typeof userData !== 'undefined' && userData.id) ? '/users/' + userData.id + '/update' : '/users/new' %>" method="POST">
+        <div class="form-group">
+            <label for="username">Username *</label>
+            <input type="text" id="username" name="username" value="<%= typeof userData !== 'undefined' ? (userData.username || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" value="<%= typeof userData !== 'undefined' ? (userData.email || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="password"><%= (typeof userData !== 'undefined' && userData.id) ? 'New Password (leave blank to keep current)' : 'Password *' %></label>
+            <input type="password" id="password" name="password" <%= (typeof userData === 'undefined' || !userData.id) ? 'required' : '' %>>
+        </div>
+        <div class="form-group">
+            <label for="role">Role *</label>
+            <select id="role" name="role" required>
+                <option value="">Select role</option>
+                <option value="manager" <%= (typeof userData !== 'undefined' && userData.role === 'manager') ? 'selected' : '' %>>Manager</option>
+                <option value="user" <%= (typeof userData !== 'undefined' && userData.role === 'user') ? 'selected' : '' %>>Common User</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/users" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<%- include('../partials/footer') %>
+

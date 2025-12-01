@@ -1,0 +1,48 @@
+<%- include('../partials/header', { title: 'User Maintenance - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1>User Maintenance</h1>
+    <p>Manage user accounts (Manager Only)</p>
+</div>
+
+<div class="search-container">
+    <input type="text" id="search-input" class="search-input" placeholder="Search users by username, email, or role...">
+    <a href="/users/new" class="btn btn-primary">Add New User</a>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="users-table-body">
+            <!-- Users will be populated here when database is connected -->
+            <tr>
+                <td colspan="6" class="text-center">No users found. Add a user to get started.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Search functionality
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#users-table-body tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+</script>
+
+<%- include('../partials/footer') %>
+

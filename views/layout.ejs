@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'Ella Rises' %></title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    
+    <!-- Chart.js for future dashboard use -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="main-header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="/">
+                        <img src="/images/ella-rises-logo.png" alt="Ella Rises Logo" class="logo-img">
+                        <span class="logo-text">Ella Rises</span>
+                    </a>
+                </div>
+                
+                <ul class="nav-menu">
+                    <% if (typeof user !== 'undefined' && user) { %>
+                        <!-- Logged in user navigation -->
+                        <li><a href="/dashboard" class="nav-link">Dashboard</a></li>
+                        <li><a href="/participants" class="nav-link">Participants</a></li>
+                        <li><a href="/events" class="nav-link">Events</a></li>
+                        <li><a href="/surveys" class="nav-link">Surveys</a></li>
+                        <li><a href="/milestones" class="nav-link">Milestones</a></li>
+                        <li><a href="/donations" class="nav-link">Donations</a></li>
+                        <% if (user.role === 'manager') { %>
+                            <li><a href="/users" class="nav-link">User Maintenance</a></li>
+                        <% } %>
+                        <li><a href="/logout" class="nav-link">Logout</a></li>
+                    <% } else { %>
+                        <!-- Public navigation -->
+                        <li><a href="/" class="nav-link">Home</a></li>
+                        <li><a href="/about" class="nav-link">About</a></li>
+                        <li><a href="/contact" class="nav-link">Contact</a></li>
+                        <li><a href="/donate" class="nav-link donate-btn">Donate</a></li>
+                        <li><a href="/login" class="nav-link">Login</a></li>
+                    <% } %>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Flash messages -->
+    <% if (typeof messages !== 'undefined' && messages) { %>
+        <div class="flash-messages">
+            <% messages.forEach(function(message) { %>
+                <div class="flash-message flash-<%= message.type %>">
+                    <%= message.text %>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <%- body %>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Ella Rises</h3>
+                    <p>Empowering the future generation of women through STEAM programs and cultural heritage.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/about">About</a></li>
+                        <li><a href="/contact">Contact</a></li>
+                        <li><a href="/donate">Donate</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Programs</h4>
+                    <ul>
+                        <li>Ballet Folklorico</li>
+                        <li>Mariachi</li>
+                        <li>STEAM Workshops</li>
+                        <li>Ella Rises Summit</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Ella Rises. All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/js/main.js"></script>
+</body>
+</html>
+

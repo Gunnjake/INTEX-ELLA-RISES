@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'Ella Rises' %></title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    
+    <!-- Chart.js for future dashboard use -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="main-header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="/">
+                        <span class="logo-text">Ella Rises</span>
+                    </a>
+                </div>
+                
+                <ul class="nav-menu">
+                    <!-- Common navigation for all users -->
+                    <li><a href="/" class="nav-link">Home</a></li>
+                    <li><a href="/about" class="nav-link">About</a></li>
+                    <li><a href="/participants" class="nav-link">Participants</a></li>
+                    <li><a href="/events" class="nav-link">Events</a></li>
+                    <li><a href="/surveys" class="nav-link">Surveys</a></li>
+                    <li><a href="/milestones" class="nav-link">Milestones</a></li>
+                    <li><a href="/donations" class="nav-link">Donations</a></li>
+                    <li><a href="/contact" class="nav-link">Contact</a></li>
+                    <li><a href="/donate" class="nav-link donate-btn">Donate</a></li>
+                    <% if (typeof user !== 'undefined' && user) { %>
+                        <!-- Additional navigation for logged in users -->
+                        <li><a href="/dashboard" class="nav-link">Dashboard</a></li>
+                        <% if (user.role === 'manager') { %>
+                            <li><a href="/users" class="nav-link">User Maintenance</a></li>
+                        <% } %>
+                        <li><a href="/logout" class="nav-link">Logout</a></li>
+                    <% } else { %>
+                        <li><a href="/login" class="nav-link">Login</a></li>
+                    <% } %>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Flash messages -->
+    <% if (typeof messages !== 'undefined' && messages) { %>
+        <div class="flash-messages">
+            <% messages.forEach(function(message) { %>
+                <div class="flash-message flash-<%= message.type %>">
+                    <%= message.text %>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+

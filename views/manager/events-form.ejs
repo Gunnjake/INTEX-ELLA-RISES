@@ -1,0 +1,44 @@
+<%- include('../partials/header', { title: (typeof eventData !== 'undefined' && eventData.id) ? 'Edit Event' : 'Add New Event', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1><%= (typeof eventData !== 'undefined' && eventData.id) ? 'Edit Event' : 'Add New Event' %></h1>
+    <p><%= (typeof eventData !== 'undefined' && eventData.id) ? 'Update event information' : 'Create a new event' %></p>
+</div>
+
+<div class="form-container">
+    <form action="<%= (typeof eventData !== 'undefined' && eventData.id) ? '/events/' + eventData.id + '/update' : '/events/new' %>" method="POST">
+        <div class="form-group">
+            <label for="event_name">Event Name *</label>
+            <input type="text" id="event_name" name="event_name" value="<%= typeof eventData !== 'undefined' ? (eventData.event_name || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="event_type">Event Type *</label>
+            <select id="event_type" name="event_type" required>
+                <option value="">Select event type</option>
+                <option value="workshop" <%= (typeof eventData !== 'undefined' && eventData.event_type === 'workshop') ? 'selected' : '' %>>Workshop</option>
+                <option value="summit" <%= (typeof eventData !== 'undefined' && eventData.event_type === 'summit') ? 'selected' : '' %>>Summit</option>
+                <option value="class" <%= (typeof eventData !== 'undefined' && eventData.event_type === 'class') ? 'selected' : '' %>>Class</option>
+                <option value="other" <%= (typeof eventData !== 'undefined' && eventData.event_type === 'other') ? 'selected' : '' %>>Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="event_date">Event Date *</label>
+            <input type="datetime-local" id="event_date" name="event_date" value="<%= typeof eventData !== 'undefined' ? (eventData.event_date || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="location">Location *</label>
+            <input type="text" id="location" name="location" value="<%= typeof eventData !== 'undefined' ? (eventData.location || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4"><%= typeof eventData !== 'undefined' ? (eventData.description || '') : '' %></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/events" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<%- include('../partials/footer') %>
+

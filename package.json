@@ -1,0 +1,29 @@
+{
+  "name": "intex-ella-rises",
+  "version": "1.0.0",
+  "description": "Ella Rises INTEX Project - Node/Express web application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["ella-rises", "intex", "node", "express"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ejs": "^3.1.9",
+    "knex": "^2.5.1",
+    "pg": "^8.11.3",
+    "express-session": "^1.17.3",
+    "multer": "^2.0.0",
+    "bcryptjs": "^2.4.3",
+    "helmet": "^7.1.0",
+    "connect-flash": "^0.1.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+

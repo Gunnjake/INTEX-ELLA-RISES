@@ -1,0 +1,58 @@
+<%- include('../partials/header', { title: (typeof milestoneData !== 'undefined' && milestoneData.id) ? 'Edit Milestone' : 'Add New Milestone', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1><%= (typeof milestoneData !== 'undefined' && milestoneData.id) ? 'Edit Milestone' : 'Add New Milestone' %></h1>
+    <p><%= (typeof milestoneData !== 'undefined' && milestoneData.id) ? 'Update milestone information' : 'Create a new milestone and assign to participant' %></p>
+</div>
+
+<div class="form-container">
+    <form action="<%= (typeof milestoneData !== 'undefined' && milestoneData.id) ? '/milestones/' + milestoneData.id + '/update' : '/milestones/new' %>" method="POST">
+        <div class="form-group">
+            <label for="milestone_name">Milestone Name *</label>
+            <input type="text" id="milestone_name" name="milestone_name" value="<%= typeof milestoneData !== 'undefined' ? (milestoneData.milestone_name || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="milestone_type">Milestone Type *</label>
+            <select id="milestone_type" name="milestone_type" required>
+                <option value="">Select milestone type</option>
+                <option value="education" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'education') ? 'selected' : '' %>>Education</option>
+                <option value="career" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'career') ? 'selected' : '' %>>Career</option>
+                <option value="personal" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'personal') ? 'selected' : '' %>>Personal Development</option>
+                <option value="steam_graduation" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'steam_graduation') ? 'selected' : '' %>>STEAM Field Graduation</option>
+                <option value="steam_job" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'steam_job') ? 'selected' : '' %>>STEAM Field Job</option>
+                <option value="other" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'other') ? 'selected' : '' %>>Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="participant_id">Participant *</label>
+            <select id="participant_id" name="participant_id" required>
+                <option value="">Select participant</option>
+                <!-- Participants will be populated from database -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="achievement_date">Achievement Date *</label>
+            <input type="date" id="achievement_date" name="achievement_date" value="<%= typeof milestoneData !== 'undefined' ? (milestoneData.achievement_date || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="status">Status *</label>
+            <select id="status" name="status" required>
+                <option value="">Select status</option>
+                <option value="achieved" <%= (typeof milestoneData !== 'undefined' && milestoneData.status === 'achieved') ? 'selected' : '' %>>Achieved</option>
+                <option value="in_progress" <%= (typeof milestoneData !== 'undefined' && milestoneData.status === 'in_progress') ? 'selected' : '' %>>In Progress</option>
+                <option value="pending" <%= (typeof milestoneData !== 'undefined' && milestoneData.status === 'pending') ? 'selected' : '' %>>Pending</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4"><%= typeof milestoneData !== 'undefined' ? (milestoneData.description || '') : '' %></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/milestones" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<%- include('../partials/footer') %>
+

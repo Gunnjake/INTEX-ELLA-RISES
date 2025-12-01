@@ -1,0 +1,49 @@
+<%- include('../partials/header', { title: 'Events - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1>Events</h1>
+    <p>Manage events and workshops</p>
+</div>
+
+<div class="search-container">
+    <input type="text" id="search-input" class="search-input" placeholder="Search events by name, type, or location...">
+    <a href="/events/new" class="btn btn-primary">Add New Event</a>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Event Name</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Participants</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="events-table-body">
+            <!-- Events will be populated here when database is connected -->
+            <tr>
+                <td colspan="7" class="text-center">No events found. Add an event to get started.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Search functionality
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#events-table-body tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+</script>
+
+<%- include('../partials/footer') %>
+

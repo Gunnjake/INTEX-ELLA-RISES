@@ -1,0 +1,61 @@
+<%- include('../partials/header', { title: 'Donate - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1>Donate to Ella Rises</h1>
+    <p>Your generous contributions have lasting impact on the future generation of women</p>
+</div>
+
+<div class="card">
+    <h2 class="card-header">Make a Donation</h2>
+    <p>Ella Rises is a nonprofit organization. Your donations help us provide STEAM programs, cultural workshops, and educational opportunities to over 150 young women each year.</p>
+    <p>If you would like to further discuss how you would like to contribute, please email nadia@ellarises.org.</p>
+</div>
+
+<div class="form-container">
+    <form action="/donate" method="POST" id="donation-form">
+        <div class="form-group">
+            <label for="donor_name">Name *</label>
+            <input type="text" id="donor_name" name="donor_name" required>
+        </div>
+        <div class="form-group">
+            <label for="donor_email">Email *</label>
+            <input type="email" id="donor_email" name="donor_email" required>
+        </div>
+        <div class="form-group">
+            <label for="donor_phone">Phone</label>
+            <input type="tel" id="donor_phone" name="donor_phone">
+        </div>
+        <div class="form-group">
+            <label for="amount">Donation Amount ($) *</label>
+            <input type="number" id="amount" name="amount" min="1" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label for="payment_method">Payment Method *</label>
+            <select id="payment_method" name="payment_method" required>
+                <option value="">Select payment method</option>
+                <option value="credit_card">Credit Card</option>
+                <option value="debit_card">Debit Card</option>
+                <option value="paypal">PayPal</option>
+                <option value="check">Check</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="notes">Additional Notes</label>
+            <textarea id="notes" name="notes" rows="4"></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Submit Donation</button>
+            <a href="/" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="card mt-2">
+    <h2 class="card-header">Thank You</h2>
+    <p>A big thank you to our supporters who make it possible for us to accomplish our goals and provide these wonderful programs for our young women!</p>
+    <p style="font-style: italic; color: var(--primary-orange);">¡Muchas gracias!</p>
+</div>
+
+<%- include('../partials/footer') %>
+

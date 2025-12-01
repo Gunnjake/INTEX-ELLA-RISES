@@ -1,0 +1,47 @@
+<%- include('../partials/header', { title: 'Participants - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1>Participants</h1>
+    <p>View participant information (View Only)</p>
+</div>
+
+<div class="search-container">
+    <input type="text" id="search-input" class="search-input" placeholder="Search participants by name, email, or program...">
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Program</th>
+                <th>Enrollment Date</th>
+            </tr>
+        </thead>
+        <tbody id="participants-table-body">
+            <!-- Participants will be populated here when database is connected -->
+            <tr>
+                <td colspan="6" class="text-center">No participants found.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Search functionality
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#participants-table-body tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+</script>
+
+<%- include('../partials/footer') %>
+

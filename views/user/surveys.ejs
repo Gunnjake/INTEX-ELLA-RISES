@@ -1,0 +1,48 @@
+<%- include('../partials/header', { title: 'Post-Event Surveys - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1>Post-Event Surveys</h1>
+    <p>View post-event survey responses (View Only)</p>
+</div>
+
+<div class="search-container">
+    <input type="text" id="search-input" class="search-input" placeholder="Search surveys by participant, event, or satisfaction score...">
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Participant</th>
+                <th>Event</th>
+                <th>Satisfaction</th>
+                <th>Usefulness</th>
+                <th>Recommendation</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody id="surveys-table-body">
+            <!-- Surveys will be populated here when database is connected -->
+            <tr>
+                <td colspan="7" class="text-center">No surveys found.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Search functionality
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#surveys-table-body tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+</script>
+
+<%- include('../partials/footer') %>
+

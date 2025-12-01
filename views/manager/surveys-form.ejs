@@ -1,0 +1,52 @@
+<%- include('../partials/header', { title: (typeof surveyData !== 'undefined' && surveyData.id) ? 'Edit Survey' : 'Add New Survey', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1><%= (typeof surveyData !== 'undefined' && surveyData.id) ? 'Edit Survey' : 'Add New Survey' %></h1>
+    <p><%= (typeof surveyData !== 'undefined' && surveyData.id) ? 'Update survey information' : 'Record a new post-event survey response' %></p>
+</div>
+
+<div class="form-container">
+    <form action="<%= (typeof surveyData !== 'undefined' && surveyData.id) ? '/surveys/' + surveyData.id + '/update' : '/surveys/new' %>" method="POST">
+        <div class="form-group">
+            <label for="participant_id">Participant *</label>
+            <select id="participant_id" name="participant_id" required>
+                <option value="">Select participant</option>
+                <!-- Participants will be populated from database -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="event_id">Event *</label>
+            <select id="event_id" name="event_id" required>
+                <option value="">Select event</option>
+                <!-- Events will be populated from database -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="satisfaction_score">Satisfaction Score (1-5) *</label>
+            <input type="number" id="satisfaction_score" name="satisfaction_score" min="1" max="5" value="<%= typeof surveyData !== 'undefined' ? (surveyData.satisfaction_score || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="usefulness_score">Usefulness Score (1-5) *</label>
+            <input type="number" id="usefulness_score" name="usefulness_score" min="1" max="5" value="<%= typeof surveyData !== 'undefined' ? (surveyData.usefulness_score || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="recommendation_score">Recommendation Score (1-5) *</label>
+            <input type="number" id="recommendation_score" name="recommendation_score" min="1" max="5" value="<%= typeof surveyData !== 'undefined' ? (surveyData.recommendation_score || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="comments">Comments</label>
+            <textarea id="comments" name="comments" rows="4"><%= typeof surveyData !== 'undefined' ? (surveyData.comments || '') : '' %></textarea>
+        </div>
+        <div class="form-group">
+            <label for="survey_date">Survey Date *</label>
+            <input type="date" id="survey_date" name="survey_date" value="<%= typeof surveyData !== 'undefined' ? (surveyData.survey_date || '') : '' %>" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/surveys" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<%- include('../partials/footer') %>
+

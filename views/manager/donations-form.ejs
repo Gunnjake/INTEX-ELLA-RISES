@@ -1,0 +1,53 @@
+<%- include('../partials/header', { title: (typeof donationData !== 'undefined' && donationData.id) ? 'Edit Donation' : 'Add New Donation', user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-header">
+    <h1><%= (typeof donationData !== 'undefined' && donationData.id) ? 'Edit Donation' : 'Add New Donation' %></h1>
+    <p><%= (typeof donationData !== 'undefined' && donationData.id) ? 'Update donation information' : 'Record a new donation' %></p>
+</div>
+
+<div class="form-container">
+    <form action="<%= (typeof donationData !== 'undefined' && donationData.id) ? '/donations/' + donationData.id + '/update' : '/donations/new' %>" method="POST">
+        <div class="form-group">
+            <label for="donor_name">Donor Name *</label>
+            <input type="text" id="donor_name" name="donor_name" value="<%= typeof donationData !== 'undefined' ? (donationData.donor_name || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="donor_email">Donor Email *</label>
+            <input type="email" id="donor_email" name="donor_email" value="<%= typeof donationData !== 'undefined' ? (donationData.donor_email || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="donor_phone">Donor Phone</label>
+            <input type="tel" id="donor_phone" name="donor_phone" value="<%= typeof donationData !== 'undefined' ? (donationData.donor_phone || '') : '' %>">
+        </div>
+        <div class="form-group">
+            <label for="amount">Amount ($) *</label>
+            <input type="number" id="amount" name="amount" min="0" step="0.01" value="<%= typeof donationData !== 'undefined' ? (donationData.amount || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="payment_method">Payment Method *</label>
+            <select id="payment_method" name="payment_method" required>
+                <option value="">Select payment method</option>
+                <option value="credit_card" <%= (typeof donationData !== 'undefined' && donationData.payment_method === 'credit_card') ? 'selected' : '' %>>Credit Card</option>
+                <option value="debit_card" <%= (typeof donationData !== 'undefined' && donationData.payment_method === 'debit_card') ? 'selected' : '' %>>Debit Card</option>
+                <option value="paypal" <%= (typeof donationData !== 'undefined' && donationData.payment_method === 'paypal') ? 'selected' : '' %>>PayPal</option>
+                <option value="check" <%= (typeof donationData !== 'undefined' && donationData.payment_method === 'check') ? 'selected' : '' %>>Check</option>
+                <option value="other" <%= (typeof donationData !== 'undefined' && donationData.payment_method === 'other') ? 'selected' : '' %>>Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="donation_date">Donation Date *</label>
+            <input type="date" id="donation_date" name="donation_date" value="<%= typeof donationData !== 'undefined' ? (donationData.donation_date || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="4"><%= typeof donationData !== 'undefined' ? (donationData.notes || '') : '' %></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/donations" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<%- include('../partials/footer') %>
+
