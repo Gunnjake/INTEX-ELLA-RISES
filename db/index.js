@@ -29,4 +29,3 @@
 
 // Placeholder - will be implemented when database is ready
 module.exports = null;
-
