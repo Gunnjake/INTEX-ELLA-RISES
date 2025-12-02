@@ -207,6 +207,344 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Check if navigation menu wraps to multiple rows
+    function checkNavWrap() {
+        const navMenu = document.querySelector('.nav-menu');
+        const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+        
+        if (navMenu && mobileMenuToggle) {
+            // Remove inline styles to check natural state
+            navMenu.style.display = '';
+            mobileMenuToggle.style.display = '';
+            
+            // Force flex to check wrapping
+            navMenu.style.display = 'flex';
+            
+            // Small delay to ensure layout is calculated
+            setTimeout(function() {
+                const menuItems = navMenu.querySelectorAll('li');
+                if (menuItems.length > 0) {
+                    const firstItemTop = menuItems[0].offsetTop;
+                    let wraps = false;
+                    
+                    for (let i = 1; i < menuItems.length; i++) {
+                        if (menuItems[i].offsetTop > firstItemTop) {
+                            wraps = true;
+                            break;
+                        }
+                    }
+                    
+                    // If menu wraps or screen is narrow, show hamburger
+                    if (wraps || window.innerWidth <= 1024) {
+                        mobileMenuToggle.style.display = 'flex';
+                        navMenu.style.display = 'none';
+                        navMenu.classList.remove('active');
+                        mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                    } else {
+                        // Menu fits on one row - show normal menu
+                        mobileMenuToggle.style.display = 'none';
+                        navMenu.style.display = 'flex';
+                        navMenu.classList.remove('active');
+                        mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                    }
+                    
+                    // After nav check, check circles (carousel should match hamburger state)
+                    checkHeroCirclesWrap();
+                }
+            }, 10);
+        } else {
+            // If no nav menu, still check circles
+            checkHeroCirclesWrap();
+        }
+    }
+
+    // Check admin nav wrap
+    function checkAdminNavWrap() {
+        const adminNavMenu = document.querySelector('.admin-nav-menu');
+        const adminMenuToggle = document.querySelector('.admin-mobile-menu-toggle');
+        
+        if (adminNavMenu && adminMenuToggle) {
+            // Remove inline styles to check natural state
+            adminNavMenu.style.display = '';
+            adminMenuToggle.style.display = '';
+            
+            // Force flex to check wrapping
+            adminNavMenu.style.display = 'flex';
+            
+            // Small delay to ensure layout is calculated
+            setTimeout(function() {
+                const menuItems = adminNavMenu.querySelectorAll('li');
+                if (menuItems.length > 0) {
+                    const firstItemTop = menuItems[0].offsetTop;
+                    let wraps = false;
+                    
+                    for (let i = 1; i < menuItems.length; i++) {
+                        if (menuItems[i].offsetTop > firstItemTop) {
+                            wraps = true;
+                            break;
+                        }
+                    }
+                    
+                    // If menu wraps or screen is narrow, show hamburger
+                    if (wraps || window.innerWidth <= 1024) {
+                        adminMenuToggle.style.display = 'flex';
+                        adminNavMenu.style.display = 'none';
+                        adminNavMenu.classList.remove('active');
+                        adminMenuToggle.setAttribute('aria-expanded', 'false');
+                    } else {
+                        // Menu fits on one row - show normal menu
+                        adminMenuToggle.style.display = 'none';
+                        adminNavMenu.style.display = 'flex';
+                        adminNavMenu.classList.remove('active');
+                        adminMenuToggle.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            }, 10);
+        }
+    }
+
+    // Check if hamburger menu is showing - if so, also show carousel
+    function checkHeroCirclesWrap() {
+        const desktopCircles = document.querySelector('.hero-images-desktop');
+        const mobileCarousel = document.querySelector('.hero-images-carousel');
+        const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+        
+        if (!desktopCircles || !mobileCarousel) return;
+        
+        // Check if hamburger menu is visible (meaning nav would wrap)
+        let hamburgerVisible = false;
+        if (mobileMenuToggle) {
+            const toggleDisplay = window.getComputedStyle(mobileMenuToggle).display;
+            hamburgerVisible = toggleDisplay !== 'none' && toggleDisplay !== '';
+        }
+        
+        // Show carousel when hamburger menu is visible
+        if (hamburgerVisible) {
+            desktopCircles.style.setProperty('display', 'none', 'important');
+            mobileCarousel.style.setProperty('display', 'block', 'important');
+        } else {
+            // Hamburger not visible - show desktop layout
+            desktopCircles.style.setProperty('display', 'flex', 'important');
+            mobileCarousel.style.setProperty('display', 'none', 'important');
+        }
+    }
+
+    // Debounce resize handler
+    let resizeTimeout;
+    function handleResize() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            checkNavWrap();
+            checkAdminNavWrap();
+            checkHeroCirclesWrap();
+        }, 100);
+    }
+
+    // Check on load - wait for DOM and images to load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                checkNavWrap();
+                checkAdminNavWrap();
+                checkHeroCirclesWrap();
+            }, 100);
+        });
+    } else {
+        // DOM already loaded
+        setTimeout(function() {
+            checkNavWrap();
+            checkAdminNavWrap();
+            checkHeroCirclesWrap();
+        }, 100);
+    }
+    
+    window.addEventListener('resize', handleResize);
+
+    // Mobile navigation menu toggle
+    const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+    const navMenu = document.querySelector('.nav-menu');
+    
+    if (mobileMenuToggle && navMenu) {
+        mobileMenuToggle.addEventListener('click', function() {
+            const isExpanded = mobileMenuToggle.getAttribute('aria-expanded') === 'true';
+            mobileMenuToggle.setAttribute('aria-expanded', !isExpanded);
+            navMenu.classList.toggle('active');
+            if (navMenu.classList.contains('active')) {
+                navMenu.style.display = 'flex';
+            } else {
+                navMenu.style.display = 'none';
+            }
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!mobileMenuToggle.contains(e.target) && !navMenu.contains(e.target)) {
+                mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                navMenu.classList.remove('active');
+                navMenu.style.display = 'none';
+            }
+        });
+
+        // Close menu when clicking a link
+        const navLinks = navMenu.querySelectorAll('.nav-link');
+        navLinks.forEach(function(link) {
+            link.addEventListener('click', function() {
+                mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                navMenu.classList.remove('active');
+                navMenu.style.display = 'none';
+            });
+        });
+    }
+
+    // Admin mobile navigation menu toggle
+    const adminMenuToggle = document.querySelector('.admin-mobile-menu-toggle');
+    const adminNavMenu = document.querySelector('.admin-nav-menu');
+    
+    if (adminMenuToggle && adminNavMenu) {
+        adminMenuToggle.addEventListener('click', function() {
+            const isExpanded = adminMenuToggle.getAttribute('aria-expanded') === 'true';
+            adminMenuToggle.setAttribute('aria-expanded', !isExpanded);
+            adminNavMenu.classList.toggle('active');
+            if (adminNavMenu.classList.contains('active')) {
+                adminNavMenu.style.display = 'flex';
+            } else {
+                adminNavMenu.style.display = 'none';
+            }
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!adminMenuToggle.contains(e.target) && !adminNavMenu.contains(e.target)) {
+                adminMenuToggle.setAttribute('aria-expanded', 'false');
+                adminNavMenu.classList.remove('active');
+                adminNavMenu.style.display = 'none';
+            }
+        });
+
+        // Close menu when clicking a link
+        const adminNavLinks = adminNavMenu.querySelectorAll('.admin-nav-link');
+        adminNavLinks.forEach(function(link) {
+            link.addEventListener('click', function() {
+                adminMenuToggle.setAttribute('aria-expanded', 'false');
+                adminNavMenu.classList.remove('active');
+                adminNavMenu.style.display = 'none';
+            });
+        });
+    }
+
+    // Mobile hero carousel functionality
+    const carousel = document.querySelector('.hero-images-carousel');
+    if (carousel) {
+        const slides = carousel.querySelectorAll('.carousel-slide');
+        const indicators = carousel.querySelectorAll('.carousel-indicator');
+        const prevBtn = carousel.querySelector('.carousel-btn-prev');
+        const nextBtn = carousel.querySelector('.carousel-btn-next');
+        let currentSlide = 0;
+        let autoSlideInterval;
+
+        function showSlide(index) {
+            // Remove active class from all slides and indicators
+            slides.forEach(slide => slide.classList.remove('active'));
+            indicators.forEach(indicator => indicator.classList.remove('active'));
+
+            // Add active class to current slide and indicator
+            if (slides[index]) {
+                slides[index].classList.add('active');
+            }
+            if (indicators[index]) {
+                indicators[index].classList.add('active');
+            }
+
+            currentSlide = index;
+        }
+
+        function nextSlide() {
+            const next = (currentSlide + 1) % slides.length;
+            showSlide(next);
+        }
+
+        function prevSlide() {
+            const prev = (currentSlide - 1 + slides.length) % slides.length;
+            showSlide(prev);
+        }
+
+        // Button event listeners
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function() {
+                nextSlide();
+                resetAutoSlide();
+            });
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function() {
+                prevSlide();
+                resetAutoSlide();
+            });
+        }
+
+        // Indicator event listeners
+        indicators.forEach(function(indicator, index) {
+            indicator.addEventListener('click', function() {
+                showSlide(index);
+                resetAutoSlide();
+            });
+        });
+
+        // Auto-slide functionality (optional - slides every 4 seconds)
+        function startAutoSlide() {
+            autoSlideInterval = setInterval(nextSlide, 4000);
+        }
+
+        function resetAutoSlide() {
+            clearInterval(autoSlideInterval);
+            startAutoSlide();
+        }
+
+        // Start auto-slide if carousel is visible (mobile only)
+        if (window.innerWidth <= 768) {
+            startAutoSlide();
+        }
+
+        // Pause auto-slide on hover
+        carousel.addEventListener('mouseenter', function() {
+            clearInterval(autoSlideInterval);
+        });
+
+        carousel.addEventListener('mouseleave', function() {
+            if (window.innerWidth <= 768) {
+                startAutoSlide();
+            }
+        });
+
+        // Touch swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        carousel.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        carousel.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+                resetAutoSlide();
+            }
+        }
+    }
 });
 
 

@@ -4,8 +4,8 @@
 <div class="hero-section-pink">
     <div class="hero-content">
         <h1 class="hero-title">WELCOME TO</h1>
-        <!-- Circular images showing programs -->
-        <div class="hero-images-circle">
+        <!-- Circular images showing programs - Desktop view -->
+        <div class="hero-images-circle hero-images-desktop">
             <div class="circle-image-wrapper">
                 <img src="/images/ballet-folklorico.avif" alt="Ballet Folklorico" class="circle-image" onerror="this.onerror=null; this.src='/images/ballet-folklorico-single.png';">
             </div>
@@ -20,6 +20,57 @@
             </div>
             <div class="circle-image-wrapper">
                 <img src="/images/steam-workshop.jpg" alt="STEAM Workshop" class="circle-image" onerror="this.style.display='none';">
+            </div>
+        </div>
+        
+        <!-- Mobile carousel for circular images -->
+        <div class="hero-images-carousel hero-images-mobile">
+            <div class="carousel-container">
+                <button class="carousel-btn carousel-btn-prev" aria-label="Previous image" type="button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="carousel-track">
+                    <!-- Logo first -->
+                    <div class="carousel-slide active">
+                        <div class="circle-image-wrapper carousel-circle logo-center">
+                            <img src="/images/ella-rises-logo-header.png" alt="Ella Rises Logo" class="circle-image logo-image" onerror="this.onerror=null; this.src='/images/ella-rises-logo-hero.png';">
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="circle-image-wrapper carousel-circle">
+                            <img src="/images/ballet-folklorico.avif" alt="Ballet Folklorico" class="circle-image" onerror="this.onerror=null; this.src='/images/ballet-folklorico-single.png';">
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="circle-image-wrapper carousel-circle">
+                            <img src="/images/ballet-folklorico-single.png" alt="Art Program" class="circle-image" onerror="this.style.display='none';">
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="circle-image-wrapper carousel-circle">
+                            <img src="/images/mariachi.avif" alt="Mariachi" class="circle-image" onerror="this.onerror=null; this.src='/images/mariachi-single.png';">
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="circle-image-wrapper carousel-circle">
+                            <img src="/images/steam-workshop.jpg" alt="STEAM Workshop" class="circle-image" onerror="this.style.display='none';">
+                        </div>
+                    </div>
+                </div>
+                <button class="carousel-btn carousel-btn-next" aria-label="Next image" type="button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="carousel-indicators">
+                <button class="carousel-indicator active" aria-label="Go to slide 1" type="button" data-slide="0"></button>
+                <button class="carousel-indicator" aria-label="Go to slide 2" type="button" data-slide="1"></button>
+                <button class="carousel-indicator" aria-label="Go to slide 3" type="button" data-slide="2"></button>
+                <button class="carousel-indicator" aria-label="Go to slide 4" type="button" data-slide="3"></button>
+                <button class="carousel-indicator" aria-label="Go to slide 5" type="button" data-slide="4"></button>
             </div>
         </div>
         <p class="hero-description">Inviting young women to pursue higher education and embrace their heritage by providing culturally rooted programs and educational experiences.</p>
