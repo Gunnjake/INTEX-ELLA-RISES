@@ -214,6 +214,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
         
         if (navMenu && mobileMenuToggle) {
+            // On desktop (wide screens), always show navigation
+            if (window.innerWidth > 1024) {
+                mobileMenuToggle.style.display = 'none';
+                navMenu.style.display = 'flex';
+                navMenu.classList.remove('active');
+                mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                checkHeroCirclesWrap();
+                return;
+            }
+            
+            // On mobile/tablet, check if menu wraps
             // Remove inline styles to check natural state
             navMenu.style.display = '';
             mobileMenuToggle.style.display = '';
@@ -341,23 +352,75 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
 
-    // Check on load - wait for DOM and images to load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                checkNavWrap();
-                checkAdminNavWrap();
-                checkHeroCirclesWrap();
-            }, 100);
-        });
-    } else {
-        // DOM already loaded
+    // Initialize navigation on page load
+    function initializeNavigation() {
         setTimeout(function() {
             checkNavWrap();
             checkAdminNavWrap();
             checkHeroCirclesWrap();
         }, 100);
     }
+
+    // Check on load - wait for DOM and images to load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeNavigation);
+    } else {
+        // DOM already loaded
+        initializeNavigation();
+    }
+    
+    // Handle browser back/forward cache (bfcache) restoration
+    // When user navigates back from external link, reinitialize navigation
+    window.addEventListener('pageshow', function(event) {
+        // event.persisted is true when page is restored from bfcache
+        if (event.persisted) {
+            // Clear any inline styles that might hide navigation
+            const navMenu = document.querySelector('.nav-menu');
+            const adminNavMenu = document.querySelector('.admin-nav-menu');
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            const adminMenuToggle = document.querySelector('.admin-mobile-menu-toggle');
+            
+            if (navMenu) {
+                navMenu.style.display = '';
+                navMenu.classList.remove('active');
+            }
+            if (adminNavMenu) {
+                adminNavMenu.style.display = '';
+                adminNavMenu.classList.remove('active');
+            }
+            if (mobileMenuToggle) {
+                mobileMenuToggle.setAttribute('aria-expanded', 'false');
+            }
+            if (adminMenuToggle) {
+                adminMenuToggle.setAttribute('aria-expanded', 'false');
+            }
+            
+            // Reinitialize navigation after clearing styles
+            initializeNavigation();
+        }
+    });
+    
+    // Handle window focus - when user returns to tab/window
+    // This ensures navigation is visible when coming back from external links
+    window.addEventListener('focus', function() {
+        // Small delay to ensure page is fully rendered
+        setTimeout(function() {
+            const navMenu = document.querySelector('.nav-menu');
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            
+            // Only restore if we're on desktop (not mobile)
+            if (navMenu && mobileMenuToggle && window.innerWidth > 1024) {
+                const toggleDisplay = window.getComputedStyle(mobileMenuToggle).display;
+                // If hamburger is hidden (desktop view), ensure nav menu is visible
+                if (toggleDisplay === 'none' || toggleDisplay === '') {
+                    // Clear any inline styles that might hide it
+                    navMenu.style.display = '';
+                    // Re-run check to ensure proper state
+                    checkNavWrap();
+                }
+            }
+        }, 100);
+    });
     
     window.addEventListener('resize', handleResize);
 
