@@ -116,7 +116,7 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: 1001;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     backdrop-filter: blur(10px);
     background-color: rgba(255, 255, 255, 0.98);
@@ -147,10 +147,12 @@ body {
 }
 
 .logo-img {
-    height: 80px;
+    height: 60px;
     width: auto;
+    max-width: 300px;
     margin-right: 0.75rem;
     object-fit: contain;
+    object-position: left center;
 }
 
 .logo-placeholder {
@@ -202,6 +204,63 @@ body {
     background-color: var(--coral);
     color: var(--white) !important;
     transform: translateY(-2px);
+}
+
+/* Secondary Admin Navigation */
+.admin-header {
+    background-color: var(--coral);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-navbar {
+    padding: 0.75rem 0;
+}
+
+.admin-nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.admin-nav-menu {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    flex-wrap: wrap;
+}
+
+.admin-nav-menu li {
+    margin: 0;
+}
+
+.admin-nav-link {
+    display: block;
+    padding: 0.75rem 1.25rem;
+    color: var(--white);
+    text-decoration: none;
+    font-family: var(--font-body), Arial, Helvetica, sans-serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: background-color 0.3s ease;
+    border-radius: 4px;
+    margin-right: 0.25rem;
+}
+
+.admin-nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: var(--white);
+}
+
+.admin-nav-link:active,
+.admin-nav-link.active {
+    background-color: rgba(255, 255, 255, 0.3);
+    font-weight: 600;
 }
 
 /* Flash Messages */
@@ -364,6 +423,22 @@ body {
     background-color: var(--text-dark);
     transform: translateY(-2px);
     box-shadow: 0px 6px 16px rgba(0,0,0,0.2);
+}
+
+.btn-rsvp:hover {
+    background-color: #333 !important;
+    transform: translateY(-2px);
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Smooth scrolling for anchor links */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Events Section Styles */
+.events-section {
+    scroll-margin-top: 100px;
 }
 
 .btn-secondary {
@@ -567,7 +642,7 @@ tbody tr:last-child td {
 /* New Hero Section with Circular Images - Matching actual website */
 .hero-section-pink {
     background-color: var(--pink-bg);
-    padding: var(--space-xl) 0;
+    padding: var(--space-lg) 0;
     text-align: center;
     width: 100vw;
     margin: 0;
@@ -582,7 +657,7 @@ tbody tr:last-child td {
 .hero-content {
     width: 100%;
     margin: 0 auto;
-    padding: var(--space-lg) var(--space-md);
+    padding: var(--space-md) var(--space-md);
 }
 
 .hero-title {
@@ -590,7 +665,7 @@ tbody tr:last-child td {
     font-size: 3rem;
     font-weight: 700;
     color: var(--text-dark);
-    margin-bottom: var(--space-xl);
+    margin-bottom: var(--space-lg);
     letter-spacing: -0.02em;
 }
 
@@ -599,7 +674,7 @@ tbody tr:last-child td {
     justify-content: center;
     align-items: center;
     gap: var(--space-lg);
-    margin: var(--space-xl) 0;
+    margin: var(--space-lg) 0;
     flex-wrap: wrap;
 }
 
@@ -615,10 +690,11 @@ tbody tr:last-child td {
 }
 
 .circle-image-wrapper.logo-center {
-    width: 280px;
-    height: 280px;
+    width: 350px;
+    height: 350px;
     z-index: 1;
-    background-color: var(--white);
+    background-color: transparent;
+    box-shadow: none;
 }
 
 .circle-image {
@@ -631,7 +707,7 @@ tbody tr:last-child td {
 .logo-image {
     object-fit: contain;
     padding: var(--space-md);
-    background-color: var(--white);
+    background-color: transparent;
     width: 100%;
     height: 100%;
 }
@@ -1018,6 +1094,26 @@ footer.main-footer h4 {
         gap: 1rem;
     }
 
+    .admin-header {
+        top: 0;
+    }
+
+    .admin-nav-container {
+        padding: 0 1rem;
+    }
+
+    .admin-nav-menu {
+        gap: 0.25rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
     .hero-section {
         padding: 3rem 1.5rem;
     }
@@ -1050,8 +1146,8 @@ footer.main-footer h4 {
     }
 
     .circle-image-wrapper.logo-center {
-        width: 140px;
-        height: 140px;
+        width: 180px;
+        height: 180px;
     }
 
     .hero-description {
@@ -1112,8 +1208,8 @@ footer.main-footer h4 {
     }
 
     .circle-image-wrapper.logo-center {
-        width: 100px;
-        height: 100px;
+        width: 120px;
+        height: 120px;
     }
 
     .hero-description {

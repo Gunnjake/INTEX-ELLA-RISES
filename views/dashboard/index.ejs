@@ -68,10 +68,54 @@
     </div>
 
     <div class="card mt-2">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 class="card-header" style="margin: 0;">My Survey Responses</h2>
+        </div>
+        
+        <% if (typeof surveys !== 'undefined' && surveys.length > 0) { %>
+            <div class="surveys-list">
+                <% surveys.forEach(survey => { %>
+                    <div class="survey-item" style="padding: 1.5rem; margin-bottom: 1rem; background: var(--pink-bg); border-radius: 8px; border-left: 4px solid var(--coral);">
+                        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);"><%= survey.eventName || 'Event' %></h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 0.75rem;">
+                            <div>
+                                <strong style="color: var(--text-secondary); font-size: 0.85rem;">Satisfaction:</strong>
+                                <span style="color: var(--text-dark); font-weight: 600;"><%= survey.SatisfactionScore || survey.satisfaction_score || 'N/A' %>/5</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-secondary); font-size: 0.85rem;">Usefulness:</strong>
+                                <span style="color: var(--text-dark); font-weight: 600;"><%= survey.UsefulnessScore || survey.usefulness_score || 'N/A' %>/5</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-secondary); font-size: 0.85rem;">Recommendation:</strong>
+                                <span style="color: var(--text-dark); font-weight: 600;"><%= survey.RecommendationScore || survey.recommendation_score || 'N/A' %>/5</span>
+                            </div>
+                        </div>
+                        <% if (survey.Comments || survey.comments) { %>
+                            <p style="margin: 0.5rem 0 0 0; color: var(--text-dark); font-size: 0.9rem;">
+                                <strong>Comments:</strong> <%= survey.Comments || survey.comments %>
+                            </p>
+                        <% } %>
+                        <p style="margin: 0.75rem 0 0 0; color: var(--text-secondary); font-size: 0.85rem;">
+                            Submitted on <%= new Date(survey.SurveySubmissionDate || survey.survey_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                        </p>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div style="padding: 2rem; text-align: center; background: var(--pink-bg); border-radius: 8px;">
+                <p style="font-size: 1rem; color: var(--text-secondary);">
+                    You haven't submitted any survey responses yet.
+                </p>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="card mt-2">
         <h2 class="card-header">Quick Actions</h2>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
             <a href="/register" class="btn btn-secondary" style="text-align: center; padding: 1rem;">Register for Program</a>
-            <a href="/programs" class="btn btn-secondary" style="text-align: center; padding: 1rem;">View All Programs</a>
+            <a href="/events" class="btn btn-secondary" style="text-align: center; padding: 1rem;">View All Events</a>
             <a href="/contact" class="btn btn-secondary" style="text-align: center; padding: 1rem;">Contact Us</a>
         </div>
     </div>

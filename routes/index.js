@@ -14,11 +14,28 @@ const db = require('../db');
 // ============================================================================
 
 // Landing page
-router.get('/', (req, res) => {
-    res.render('public/landing', {
-        title: 'Ella Rises - Empowering the Future Generation of Women',
-        user: req.session.user || null
-    });
+router.get('/', async (req, res) => {
+    try {
+        // Fetch upcoming events for the homepage
+        const events = await db('EventTemplates')
+            .select('*')
+            .where('event_date', '>=', new Date())
+            .orderBy('event_date', 'asc')
+            .limit(5);
+        
+        res.render('public/landing', {
+            title: 'Ella Rises - Empowering the Future Generation of Women',
+            user: req.session.user || null,
+            events: events || []
+        });
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        res.render('public/landing', {
+            title: 'Ella Rises - Empowering the Future Generation of Women',
+            user: req.session.user || null,
+            events: []
+        });
+    }
 });
 
 // About page
@@ -203,6 +220,34 @@ router.get('/teapot', (req, res) => {
 });
 
 // ============================================================================
+// TEST LOGIN ROUTES (for testing without database)
+// ============================================================================
+
+router.get('/test-login/admin', (req, res) => {
+    req.session.user = {
+        id: 999,
+        username: 'test-admin',
+        role: 'manager',
+        email: 'admin@test.com'
+    };
+    const returnTo = req.session.returnTo || '/dashboard';
+    delete req.session.returnTo;
+    res.redirect(returnTo);
+});
+
+router.get('/test-login/customer', (req, res) => {
+    req.session.user = {
+        id: 998,
+        username: 'test-customer',
+        role: 'user',
+        email: 'customer@test.com'
+    };
+    const returnTo = req.session.returnTo || '/dashboard';
+    delete req.session.returnTo;
+    res.redirect(returnTo);
+});
+
+// ============================================================================
 // AUTHENTICATION ROUTES
 // ============================================================================
 
@@ -315,23 +360,53 @@ router.get('/logout', (req, res) => {
 router.get('/dashboard', requireAuth, async (req, res) => {
     try {
         const userId = req.session.user.id;
+        const isManager = req.session.user.role === 'manager';
         
-        // TODO: Fetch user registrations when database is connected
-        // const registrations = await db('Registrations')
-        //     .join('EventTemplates', 'Registrations.EventTemplateID', 'EventTemplates.EventTemplateID')
-        //     .where({ 'Registrations.ParticipantID': userId })
-        //     .select('EventTemplates.EventName as program', 'Registrations.RegistrationDate as registrationDate')
-        //     .orderBy('Registrations.RegistrationDate', 'desc');
-        
-        // Placeholder for now
-        const registrations = [];
-        
-        res.render('dashboard/index', {
-            title: 'Dashboard - Ella Rises',
-            user: req.session.user,
-            messages: req.session.messages || [],
-            registrations: registrations
-        });
+        if (isManager) {
+            // Manager dashboard - no additional data needed for now
+            res.render('dashboard/index', {
+                title: 'Dashboard - Ella Rises',
+                user: req.session.user,
+                messages: req.session.messages || [],
+                registrations: []
+            });
+        } else {
+            // Customer dashboard - fetch their registrations and survey responses
+            try {
+                // Fetch user registrations
+                const registrations = await db('Registrations')
+                    .join('EventTemplates', 'Registrations.EventTemplateID', 'EventTemplates.EventTemplateID')
+                    .where({ 'Registrations.ParticipantID': userId })
+                    .select('EventTemplates.EventName as program', 'Registrations.RegistrationDate as registrationDate')
+                    .orderBy('Registrations.RegistrationDate', 'desc');
+                
+                // Fetch user's survey responses
+                const surveys = await db('Surveys')
+                    .join('Registrations', 'Surveys.RegistrationID', 'Registrations.RegistrationID')
+                    .join('EventTemplates', 'Registrations.EventTemplateID', 'EventTemplates.EventTemplateID')
+                    .where({ 'Registrations.ParticipantID': userId })
+                    .select('Surveys.*', 'EventTemplates.EventName as eventName')
+                    .orderBy('Surveys.SurveySubmissionDate', 'desc');
+                
+                res.render('dashboard/index', {
+                    title: 'Dashboard - Ella Rises',
+                    user: req.session.user,
+                    messages: req.session.messages || [],
+                    registrations: registrations || [],
+                    surveys: surveys || []
+                });
+            } catch (dbError) {
+                console.log('Database error (tables may not exist):', dbError.message);
+                // Placeholder for when database is not connected
+                res.render('dashboard/index', {
+                    title: 'Dashboard - Ella Rises',
+                    user: req.session.user,
+                    messages: req.session.messages || [],
+                    registrations: [],
+                    surveys: []
+                });
+            }
+        }
         req.session.messages = [];
     } catch (error) {
         console.error('Dashboard error:', error);
@@ -339,7 +414,8 @@ router.get('/dashboard', requireAuth, async (req, res) => {
             title: 'Dashboard - Ella Rises',
             user: req.session.user,
             messages: [{ type: 'error', text: 'Error loading dashboard data.' }],
-            registrations: []
+            registrations: [],
+            surveys: []
         });
     }
 });
@@ -614,11 +690,11 @@ router.get('/events', async (req, res) => {
     const viewPath = isManager ? 'manager/events' : 'user/events';
     
     try {
-        const events = await db('EventTemplates').select('*').orderBy('EventTemplateID', 'desc');
+        const events = await db('EventTemplates').select('*').orderBy('EventDate', 'asc');
         res.render(viewPath, {
             title: 'Events - Ella Rises',
             user: user,
-            events: events,
+            events: events || [],
             messages: req.session.messages || []
         });
         req.session.messages = [];
@@ -628,7 +704,7 @@ router.get('/events', async (req, res) => {
             title: 'Events - Ella Rises',
             user: user,
             events: [],
-            messages: [{ type: 'error', text: 'Error loading events.' }]
+            messages: [{ type: 'info', text: 'Database not connected. Events will appear here once the database is set up.' }]
         });
         req.session.messages = [];
     }
@@ -717,11 +793,59 @@ router.post('/events/:id/delete', requireAuth, async (req, res) => {
 // SURVEY ROUTES (View: public/common users, CRUD: manager only)
 // ============================================================================
 
+// Customer's own surveys page
+router.get('/my-surveys', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        
+        try {
+            const surveys = await db('Surveys')
+                .join('Registrations', 'Surveys.RegistrationID', 'Registrations.RegistrationID')
+                .join('EventTemplates', 'Registrations.EventTemplateID', 'EventTemplates.EventTemplateID')
+                .where({ 'Registrations.ParticipantID': userId })
+                .select('Surveys.*', 'EventTemplates.EventName as eventName')
+                .orderBy('Surveys.SurveySubmissionDate', 'desc');
+            
+            res.render('user/surveys', {
+                title: 'My Surveys - Ella Rises',
+                user: req.session.user,
+                surveys: surveys || [],
+                messages: req.session.messages || []
+            });
+        } catch (dbError) {
+            console.log('Database error:', dbError.message);
+            res.render('user/surveys', {
+                title: 'My Surveys - Ella Rises',
+                user: req.session.user,
+                surveys: [],
+                messages: [{ type: 'info', text: 'Database not connected. Surveys will appear here once the database is set up.' }]
+            });
+        }
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching user surveys:', error);
+        res.render('user/surveys', {
+            title: 'My Surveys - Ella Rises',
+            user: req.session.user,
+            surveys: [],
+            messages: [{ type: 'info', text: 'Database not connected. Surveys will appear here once the database is set up.' }]
+        });
+    }
+});
+
 router.get('/surveys', async (req, res) => {
-    // View-only access for everyone (no login required)
+    // Manager-only view - shows all surveys
     const user = req.session.user || null;
     const isManager = user && user.role === 'manager';
-    const viewPath = isManager ? 'manager/surveys' : 'user/surveys';
+    
+    if (!isManager) {
+        // Redirect customers to their own surveys page
+        if (user) {
+            return res.redirect('/my-surveys');
+        }
+        // Not logged in - redirect to login
+        return res.redirect('/login');
+    }
     
     try {
         const surveys = await db('Surveys')
@@ -729,7 +853,7 @@ router.get('/surveys', async (req, res) => {
             .join('Participants', 'Registrations.ParticipantID', 'Participants.ParticipantID')
             .select('Surveys.*', 'Participants.ParticipantFirstName', 'Participants.ParticipantLastName')
             .orderBy('Surveys.SurveySubmissionDate', 'desc');
-        res.render(viewPath, {
+        res.render('manager/surveys', {
             title: 'Post-Event Surveys - Ella Rises',
             user: user,
             surveys: surveys,
@@ -738,7 +862,7 @@ router.get('/surveys', async (req, res) => {
         req.session.messages = [];
     } catch (error) {
         console.error('Error fetching surveys:', error);
-        res.render(viewPath, {
+        res.render('manager/surveys', {
             title: 'Post-Event Surveys - Ella Rises',
             user: user,
             surveys: [],
@@ -873,13 +997,27 @@ router.get('/milestones/new', requireAuth, async (req, res) => {
     if (req.session.user.role !== 'manager') {
         return res.status(403).send('Access denied.');
     }
-    // TODO: const participants = await db('participants').select('id', 'first_name', 'last_name');
-    res.render('manager/milestones-form', {
-        title: 'Add New Milestone - Ella Rises',
-        user: req.session.user,
-        milestoneData: null,
-        participants: []
-    });
+    try {
+        // Fetch participants from database for 1-to-many relationship
+        const participants = await db('Participants')
+            .select('ParticipantID', 'ParticipantFirstName', 'ParticipantLastName')
+            .orderBy('ParticipantLastName', 'asc');
+        
+        res.render('manager/milestones-form', {
+            title: 'Add New Milestone - Ella Rises',
+            user: req.session.user,
+            milestoneData: null,
+            participants: participants || []
+        });
+    } catch (error) {
+        console.error('Error fetching participants for milestone:', error);
+        res.render('manager/milestones-form', {
+            title: 'Add New Milestone - Ella Rises',
+            user: req.session.user,
+            milestoneData: null,
+            participants: []
+        });
+    }
 });
 
 router.post('/milestones/new', requireAuth, async (req, res) => {
@@ -904,13 +1042,23 @@ router.get('/milestones/:id/edit', requireAuth, async (req, res) => {
     }
     const { id } = req.params;
     try {
-        // TODO: const milestoneData = await db('milestones').where({ id }).first();
-        // TODO: const participants = await db('participants').select('id', 'first_name', 'last_name');
+        const milestoneData = await db('Milestones').where({ MilestoneID: id }).first();
+        
+        if (!milestoneData) {
+            req.session.messages = [{ type: 'error', text: 'Milestone not found.' }];
+            return res.redirect('/milestones');
+        }
+        
+        // Fetch participants for 1-to-many relationship
+        const participants = await db('Participants')
+            .select('ParticipantID', 'ParticipantFirstName', 'ParticipantLastName')
+            .orderBy('ParticipantLastName', 'asc');
+        
         res.render('manager/milestones-form', {
             title: 'Edit Milestone - Ella Rises',
             user: req.session.user,
-            milestoneData: null,
-            participants: []
+            milestoneData: milestoneData,
+            participants: participants || []
         });
     } catch (error) {
         console.error('Error fetching milestone:', error);

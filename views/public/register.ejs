@@ -19,84 +19,102 @@
 <div class="form-container">
     <div class="form-card">
         <form action="/register" method="POST" id="registration-form">
-            <div class="form-group">
-                <label for="firstName">First Name *</label>
-                <input type="text" id="firstName" name="firstName" value="<%= typeof user !== 'undefined' && user ? user.firstName || '' : '' %>" required>
-            </div>
-
-            <div class="form-group">
-                <label for="lastName">Last Name *</label>
-                <input type="text" id="lastName" name="lastName" value="<%= typeof user !== 'undefined' && user ? user.lastName || '' : '' %>" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email">Email Address *</label>
-                <input type="email" id="email" name="email" value="<%= typeof user !== 'undefined' && user ? user.email || '' : '' %>" <%= typeof user !== 'undefined' && user ? 'readonly' : 'required' %>>
-            </div>
-
-            <div class="form-group">
-                <label for="phone">Phone Number *</label>
-                <input type="tel" id="phone" name="phone" value="<%= typeof user !== 'undefined' && user ? user.phone || '' : '' %>" required>
-            </div>
-
-            <div class="form-group">
-                <label for="age">Age *</label>
-                <input type="number" id="age" name="age" min="11" max="18" value="<%= typeof user !== 'undefined' && user ? user.age || '' : '' %>" required>
-            </div>
-
-            <div class="form-group">
-                <label for="program">Program Interest *</label>
-                <select id="program" name="program" required>
-                    <option value="">Select a program</option>
-                    <option value="Ballet Folklorico">Ballet Folklorico</option>
-                    <option value="Mariachi">Mariachi</option>
-                    <option value="STEAM">STEAM</option>
-                    <option value="Summit + Educational Pathways">Summit + Educational Pathways</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="city">City</label>
-                <input type="text" id="city" name="city" value="<%= typeof user !== 'undefined' && user ? user.city || '' : '' %>">
-            </div>
-
-            <div class="form-group">
-                <label for="state">State</label>
-                <input type="text" id="state" name="state" maxlength="2" placeholder="UT" value="<%= typeof user !== 'undefined' && user ? user.state || '' : '' %>">
-            </div>
-
-            <div class="form-group">
-                <label for="zip">Zip Code</label>
-                <input type="text" id="zip" name="zip" pattern="[0-9]{5}" value="<%= typeof user !== 'undefined' && user ? user.zip || '' : '' %>">
-            </div>
-
-            <div class="form-group">
-                <label for="school">School or Employer</label>
-                <input type="text" id="school" name="school" value="<%= typeof user !== 'undefined' && user ? user.school || '' : '' %>">
-            </div>
-
-            <% if (typeof user === 'undefined' || !user) { %>
-                <div class="form-group">
-                    <label for="password">Create Password *</label>
-                    <input type="password" id="password" name="password" required minlength="6">
-                    <small style="color: var(--text-secondary); font-size: 0.85rem;">Minimum 6 characters</small>
+            <!-- Participant Information Section -->
+            <div class="form-section">
+                <h3 class="section-header">Participant Information</h3>
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="firstName">First Name *</label>
+                        <input type="text" id="firstName" name="firstName" value="<%= typeof user !== 'undefined' && user ? user.firstName || '' : '' %>" required>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="lastName">Last Name *</label>
+                        <input type="text" id="lastName" name="lastName" value="<%= typeof user !== 'undefined' && user ? user.lastName || '' : '' %>" required>
+                    </div>
                 </div>
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="email">Email Address *</label>
+                        <input type="email" id="email" name="email" value="<%= typeof user !== 'undefined' && user ? user.email || '' : '' %>" <%= typeof user !== 'undefined' && user ? 'readonly' : 'required' %>>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="phone">Phone Number *</label>
+                        <input type="tel" id="phone" name="phone" value="<%= typeof user !== 'undefined' && user ? user.phone || '' : '' %>" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="age">Age *</label>
+                        <input type="number" id="age" name="age" min="11" max="18" value="<%= typeof user !== 'undefined' && user ? user.age || '' : '' %>" required>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="school">School or Employer</label>
+                        <input type="text" id="school" name="school" value="<%= typeof user !== 'undefined' && user ? user.school || '' : '' %>">
+                    </div>
+                </div>
+            </div>
 
+            <!-- Location Information Section -->
+            <div class="form-section">
+                <h3 class="section-header">Location Information</h3>
+                <div class="form-row location-row">
+                    <div class="form-group form-group-half">
+                        <label for="city">City</label>
+                        <input type="text" id="city" name="city" value="<%= typeof user !== 'undefined' && user ? user.city || '' : '' %>">
+                    </div>
+                    <div class="form-group form-group-quarter">
+                        <label for="state">State</label>
+                        <input type="text" id="state" name="state" maxlength="2" placeholder="UT" value="<%= typeof user !== 'undefined' && user ? user.state || '' : '' %>">
+                    </div>
+                    <div class="form-group form-group-quarter">
+                        <label for="zip">Zip Code</label>
+                        <input type="text" id="zip" name="zip" pattern="[0-9]{5}" value="<%= typeof user !== 'undefined' && user ? user.zip || '' : '' %>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Program Selection Section -->
+            <div class="form-section">
+                <h3 class="section-header">Program Selection</h3>
                 <div class="form-group">
-                    <label for="confirmPassword">Confirm Password *</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" required minlength="6">
+                    <label for="program">Program Interest *</label>
+                    <select id="program" name="program" required>
+                        <option value="">Select a program</option>
+                        <option value="Ballet Folklorico">Ballet Folklorico</option>
+                        <option value="Mariachi">Mariachi</option>
+                        <option value="STEAM">STEAM</option>
+                        <option value="Summit + Educational Pathways">Summit + Educational Pathways</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Account Creation Section (only if not logged in) -->
+            <% if (typeof user === 'undefined' || !user) { %>
+                <div class="form-section">
+                    <h3 class="section-header">Create Account</h3>
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="password">Create Password *</label>
+                            <input type="password" id="password" name="password" required minlength="6">
+                            <small style="color: var(--text-secondary); font-size: 0.85rem;">Minimum 6 characters</small>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="confirmPassword">Confirm Password *</label>
+                            <input type="password" id="confirmPassword" name="confirmPassword" required minlength="6">
+                        </div>
+                    </div>
                 </div>
             <% } %>
 
-            <div class="form-group">
-                <button type="submit" class="btn btn-primary"><%= typeof user !== 'undefined' && user ? 'Register for Program' : 'Create Account & Register' %></button>
+            <!-- Submit Button -->
+            <div class="form-section">
+                <button type="submit" class="btn btn-primary btn-submit"><%= typeof user !== 'undefined' && user ? 'Register for Program' : 'Create Account & Register' %></button>
+                <% if (typeof user === 'undefined' || !user) { %>
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Already have an account? <a href="/login" style="color: var(--coral);">Login here</a></p>
+                    </div>
+                <% } %>
             </div>
-
-            <% if (typeof user === 'undefined' || !user) { %>
-                <div style="text-align: center; margin-top: 1rem;">
-                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Already have an account? <a href="/login" style="color: var(--coral);">Login here</a></p>
-                </div>
-            <% } %>
         </form>
     </div>
 </div>
@@ -127,7 +145,7 @@ document.getElementById('registration-form')?.addEventListener('submit', functio
 
 <style>
 .form-container {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 2rem auto;
     padding: 0 2rem;
 }
@@ -139,8 +157,49 @@ document.getElementById('registration-form')?.addEventListener('submit', functio
     box-shadow: var(--card-shadow);
 }
 
-.form-group {
+.form-section {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid var(--border-light);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.section-header {
+    font-family: var(--font-header), serif;
+    font-size: 1.5rem;
+    color: var(--coral);
     margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--coral);
+    font-weight: 600;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group-half {
+    grid-column: span 1;
+}
+
+.form-group-quarter {
+    grid-column: span 1;
 }
 
 .form-group label {
@@ -161,6 +220,7 @@ document.getElementById('registration-form')?.addEventListener('submit', functio
     font-family: var(--font-body), Arial, Helvetica, sans-serif;
     font-size: 1rem;
     transition: border-color 0.3s ease;
+    box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -169,10 +229,15 @@ document.getElementById('registration-form')?.addEventListener('submit', functio
     border-color: var(--coral);
 }
 
-.form-group button {
+.btn-submit {
     width: 100%;
     padding: 1rem;
     font-size: 1.1rem;
+}
+
+/* Location row: City (half), State (quarter), Zip (quarter) */
+.location-row {
+    grid-template-columns: 2fr 1fr 1fr !important;
 }
 
 @media (max-width: 768px) {
@@ -182,6 +247,29 @@ document.getElementById('registration-form')?.addEventListener('submit', functio
     
     .form-card {
         padding: 1.5rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .form-group-half,
+    .form-group-quarter {
+        grid-column: span 1;
+    }
+
+    .location-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+    }
+
+    .section-header {
+        font-size: 1.25rem;
     }
 }
 </style>

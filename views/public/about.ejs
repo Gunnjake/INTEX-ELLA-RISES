@@ -1,11 +1,16 @@
 <%- include('../partials/header', { title: 'About - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
 
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 0.5rem;">
     <h1>About Ella Rises</h1>
-    <p>Learn more about our mission, vision, and the team behind Ella Rises</p>
 </div>
 
-<div class="about-image-section" style="max-width: 900px; margin: 2rem auto; padding: 0 2rem;">
+<div class="card" style="margin-bottom: 1rem;">
+    <h2 class="card-header">Our Mission</h2>
+    <p>Ella Rises aims to empower the rising generation of women to pursue higher education and embrace their heritage through mentoring, creative workshops, and leadership opportunities that build both technical competence and artistic confidence.</p>
+    <p>Leaders work together with partnerships at UVU and BYU to provide STEAM (science, technology, engineering, arts, and math) programs to encourage women to pursue their interests in these fields.</p>
+</div>
+
+<div class="about-image-section" style="max-width: 900px; margin: 1rem auto; padding: 0 2rem;">
     <video 
         id="about-video"
         src="https://video.wixstatic.com/video/e5f869_f075e19ca2744354bb20a65881dce28f/1080p/mp4/file.mp4"
@@ -27,52 +32,5 @@
         }
     });
 </script>
-
-<div class="card">
-    <h2 class="card-header">Our Mission</h2>
-    <p>Ella Rises aims to empower the rising generation of women to pursue higher education and embrace their heritage through mentoring, creative workshops, and leadership opportunities that build both technical competence and artistic confidence.</p>
-    <p>Leaders work together with partnerships at UVU and BYU to provide STEAM (science, technology, engineering, arts, and math) programs to encourage women to pursue their interests in these fields.</p>
-</div>
-
-<div class="about-image-section" style="max-width: 900px; margin: 2rem auto; padding: 0 2rem;">
-    <img src="/images/full-class.avif" alt="Full class photo" style="width: 100%; height: auto; border-radius: 8px; display: block;">
-</div>
-
-<div class="card">
-    <h2 class="card-header">What We Do</h2>
-    <p>Ella Rises uses post-event surveys to measure the effectiveness of our programs. Primary measures include satisfaction, usefulness, and a recommendation score. We also keep track of milestones achieved — an indicator of long-term success.</p>
-    <p>We want to quantify the impact of our events on key indicators of success. Tracking these things helps us identify high-impact activities and enables detailed reporting of program effectiveness to donors, sponsors, and project leadership.</p>
-</div>
-
-<div class="programs-images-section" style="max-width: 1200px; margin: 2rem auto; padding: 0 2rem;">
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
-        <div style="text-align: center;">
-            <img src="/images/ballet-folklorico-cropped.jpg" alt="Ballet Folklorico" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 0.5rem;">
-            <p style="font-weight: 600; color: var(--coral);">Ballet Folklorico</p>
-        </div>
-        <div style="text-align: center;">
-            <img src="/images/mariachi-cropped.jpg" alt="Mariachi" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 0.5rem;">
-            <p style="font-weight: 600; color: var(--coral);">Mariachi</p>
-        </div>
-        <div style="text-align: center;">
-            <img src="/images/steam-workshop.jpg" alt="STEAM Workshops" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 0.5rem;">
-            <p style="font-weight: 600; color: var(--coral);">STEAM</p>
-        </div>
-        <div style="text-align: center;">
-            <img src="/images/summit-2022.jpg" alt="Ella Rises Summit" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 0.5rem;">
-            <p style="font-weight: 600; color: var(--coral);">Summit</p>
-        </div>
-    </div>
-</div>
-
-<div class="card">
-    <h2 class="card-header">Our Programs</h2>
-    <ul style="list-style: disc; margin-left: 2rem; line-height: 2;">
-        <li><strong>Ballet Folklorico:</strong> Latin American Folk dance program fostering joy, confidence, and creative self-expression</li>
-        <li><strong>Mariachi:</strong> Female mariachi band program welcoming all levels of music proficiency</li>
-        <li><strong>STEAM Workshops:</strong> Virtual and in-person workshops in science, technology, engineering, arts, and math</li>
-        <li><strong>Ella Rises Summit:</strong> Day camp with activities showcasing art, STEM, and educational focus</li>
-    </ul>
-</div>
 
 <%- include('../partials/footer') %>

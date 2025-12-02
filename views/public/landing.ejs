@@ -12,7 +12,7 @@
                 <img src="/images/ballet-folklorico-single.png" alt="Art Program" class="circle-image" onerror="this.style.display='none';">
             </div>
             <div class="circle-image-wrapper logo-center">
-                <img src="/images/ella-rises-logo-hero.png" alt="Ella Rises Logo" class="circle-image logo-image" onerror="this.onerror=null; this.src='/images/ella-rises-logo.png';">
+                <img src="/images/ella-rises-logo-header.png" alt="Ella Rises Logo" class="circle-image logo-image" onerror="this.onerror=null; this.src='/images/ella-rises-logo-hero.png';">
             </div>
             <div class="circle-image-wrapper">
                 <img src="/images/mariachi.avif" alt="Mariachi" class="circle-image" onerror="this.onerror=null; this.src='/images/mariachi-single.png';">
@@ -107,12 +107,65 @@
     </div>
 </div>
 
+<!-- Events Section -->
+<section id="events" class="events-section" style="background: white; padding: 4rem 2rem; margin-top: 4rem;">
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <h2 style="text-align: center; font-size: 2rem; margin-bottom: 3rem; color: var(--text-dark); font-weight: 400; letter-spacing: 0.1em;">UPCOMING EVENTS</h2>
+        
+        <% if (typeof events !== 'undefined' && events.length > 0) { %>
+            <div class="events-container" style="display: flex; flex-direction: column; gap: 2rem; align-items: center;">
+                <% events.forEach(function(event) { %>
+                    <div class="event-card" style="width: 100%; max-width: 600px; border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background: white; position: relative;">
+                        <div style="position: absolute; top: 1.5rem; left: 1.5rem;">
+                            <span style="border: 1px solid #333; padding: 0.25rem 0.75rem; font-size: 0.75rem; color: #666; display: inline-block;">Multiple Dates</span>
+                        </div>
+                        <div style="margin-top: 2rem;">
+                            <h3 style="font-size: 1.5rem; font-weight: 600; color: var(--text-dark); margin-bottom: 1rem; margin-top: 0.5rem;"><%= event.event_name %></h3>
+                            <% 
+                                const eventDate = new Date(event.event_date);
+                                const formattedDate = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                            %>
+                            <p style="color: #666; font-size: 0.95rem; margin-bottom: 0.5rem;">
+                                <%= formattedDate %> | <strong style="color: var(--text-dark);"><%= event.location %></strong>
+                            </p>
+                            <% if (event.description) { %>
+                                <a href="#" style="color: #999; font-size: 0.85rem; text-decoration: underline; display: inline-block; margin-bottom: 1rem;">More info</a>
+                            <% } %>
+                            <div style="text-align: center; margin-top: 1.5rem;">
+                                <a href="/register" class="btn-rsvp" style="background: #000; color: white; padding: 0.75rem 2rem; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: 500; transition: background 0.3s;">RSVP</a>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div style="text-align: center; padding: 3rem 0;">
+                <p style="color: #999; font-size: 1.1rem;">No upcoming events at this time. Check back soon!</p>
+            </div>
+        <% } %>
+    </div>
+</section>
+
 <div class="section-full light-bg" style="margin-top: 4rem;">
     <div style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
         <h2 style="text-align: center; font-size: 2rem; margin-bottom: 2rem; color: var(--coral);">Impact</h2>
         <p style="text-align: center; font-size: 1.1rem; max-width: 900px; margin: 0 auto;">Our signature programs and the Ella Rises Summit serve over 150 young women each year! We work together with partnerships at UVU and BYU to provide STEAM programs that encourage women to pursue their interests in these fields.</p>
     </div>
 </div>
+
+<script>
+    // Handle smooth scrolling to events section when navigating from other pages
+    if (window.location.hash === '#events') {
+        window.addEventListener('load', function() {
+            const eventsSection = document.getElementById('events');
+            if (eventsSection) {
+                setTimeout(function() {
+                    eventsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        });
+    }
+</script>
 
 <%- include('../partials/footer') %>
 

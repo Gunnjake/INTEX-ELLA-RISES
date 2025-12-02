@@ -27,8 +27,18 @@
             <label for="participant_id">Participant *</label>
             <select id="participant_id" name="participant_id" required>
                 <option value="">Select participant</option>
-                <!-- Participants will be populated from database -->
+                <% if (typeof participants !== 'undefined' && participants.length > 0) { %>
+                    <% participants.forEach(function(participant) { %>
+                        <option value="<%= participant.ParticipantID %>" 
+                            <%= (typeof milestoneData !== 'undefined' && milestoneData.ParticipantID == participant.ParticipantID) ? 'selected' : '' %>>
+                            <%= participant.ParticipantFirstName %> <%= participant.ParticipantLastName %>
+                        </option>
+                    <% }); %>
+                <% } %>
             </select>
+            <small style="color: var(--text-secondary); font-size: 0.85rem; display: block; margin-top: 0.25rem;">
+                Note: Multiple milestones can be assigned to the same participant (1-to-many relationship)
+            </small>
         </div>
         <div class="form-group">
             <label for="achievement_date">Achievement Date *</label>

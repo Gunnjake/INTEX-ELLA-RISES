@@ -23,7 +23,7 @@
             <div class="nav-container">
                 <div class="nav-logo">
                     <a href="/">
-                        <img src="/images/ella-rises-logo.png" alt="Ella Rises Logo" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <img src="/images/ella-rises-logo-white.png" alt="Ella Rises Logo" class="logo-img" onerror="this.onerror=null; this.src='/images/ella-rises-logo-pink.png';">
                         <div class="logo-placeholder" style="display: none;">ER</div>
                     </a>
                 </div>
@@ -31,22 +31,13 @@
                 <ul class="nav-menu">
                     <!-- Public navigation (visible to everyone) -->
                     <li><a href="/" class="nav-link">Home</a></li>
-                    <li><a href="/about" class="nav-link">About</a></li>
+                    <li><a href="/about" class="nav-link">About Us</a></li>
                     <li><a href="/programs" class="nav-link">Programs</a></li>
+                    <li><a href="/#events" class="nav-link">Events</a></li>
                     <li><a href="/register" class="nav-link">Register</a></li>
                     <li><a href="/contact" class="nav-link">Contact Us</a></li>
                     <li><a href="https://givebutter.com/EllaRises" target="_blank" rel="noopener noreferrer" class="nav-link donate-btn">Donate</a></li>
                     <% if (typeof user !== 'undefined' && user) { %>
-                        <!-- Navigation for logged in users -->
-                        <li><a href="/dashboard" class="nav-link">Dashboard</a></li>
-                        <li><a href="/participants" class="nav-link">Participants</a></li>
-                        <li><a href="/events" class="nav-link">Events</a></li>
-                        <li><a href="/surveys" class="nav-link">Surveys</a></li>
-                        <li><a href="/milestones" class="nav-link">Milestones</a></li>
-                        <li><a href="/donations" class="nav-link">Donations</a></li>
-                        <% if (user.role === 'manager') { %>
-                            <li><a href="/users" class="nav-link">User Maintenance</a></li>
-                        <% } %>
                         <li><a href="/logout" class="nav-link">Logout</a></li>
                     <% } else { %>
                         <li><a href="/login" class="nav-link">Login</a></li>
@@ -55,6 +46,29 @@
             </div>
         </nav>
     </header>
+
+    <!-- Secondary Admin Navigation (only visible when logged in) -->
+    <% if (typeof user !== 'undefined' && user) { %>
+        <header class="admin-header">
+            <nav class="admin-navbar">
+                <div class="admin-nav-container">
+                    <ul class="admin-nav-menu">
+                        <li><a href="/dashboard" class="admin-nav-link">Dashboard</a></li>
+                        <li><a href="/events" class="admin-nav-link">Events</a></li>
+                        <% if (user.role === 'manager') { %>
+                            <li><a href="/participants" class="admin-nav-link">Participants</a></li>
+                            <li><a href="/surveys" class="admin-nav-link">Surveys</a></li>
+                            <li><a href="/milestones" class="admin-nav-link">Milestones</a></li>
+                            <li><a href="/donations" class="admin-nav-link">Donations</a></li>
+                            <li><a href="/users" class="admin-nav-link">User Maintenance</a></li>
+                        <% } else { %>
+                            <li><a href="/my-surveys" class="admin-nav-link">My Surveys</a></li>
+                        <% } %>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+    <% } %>
 
     <!-- Flash messages -->
     <% if (typeof messages !== 'undefined' && messages) { %>
