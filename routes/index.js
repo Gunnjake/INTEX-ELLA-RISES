@@ -270,33 +270,6 @@ router.get('/teapot', (req, res) => {
     });
 });
 
-// Send email route - POST /send-email
-router.post('/send-email', async (req, res) => {
-    try {
-        const info = await transporter.sendMail({
-            from: '"Melyssa Kessler" <melyssa.kessler64@ethereal.email>',
-            to: "gunnjake@byu.edu, blanesantilli@gmail.com",
-            subject: "Hello",
-            text: "Hello world?", // plain‑text body
-            html: "<b>Hello world?</b>", // HTML body
-        });
-
-        console.log("Message sent:", info.messageId);
-        console.log('Preview URL: ' + nodemailer.getTestMessageUrl(info));
-        
-        res.json({ 
-            success: true, 
-            messageId: info.messageId,
-            previewUrl: nodemailer.getTestMessageUrl(info)
-        });
-    } catch (error) {
-        console.error('Email send error:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: error.message 
-        });
-    }
-});
 
 // ============================================================================
 // AUTHENTICATION ROUTES
