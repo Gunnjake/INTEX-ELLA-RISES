@@ -1,6 +1,6 @@
 // Email transporter module - exports transporter only, no code runs on import
-// Uses Ethereal test account credentials
-
+// Uses Ethereal test account credentials for development/testing
+// emial
 const nodemailer = require("nodemailer");
 
 // Ethereal test account credentials - DO NOT CHANGE
