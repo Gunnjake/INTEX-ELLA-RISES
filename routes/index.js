@@ -136,11 +136,11 @@ router.post('/register', async (req, res) => {
             return res.redirect('/register');
         }
         
-        // Validate password
-        if (!password || password.length < 6) {
+        // Validate password exists (any length allowed)
+        if (!password) {
             req.session.messages = [{ 
                 type: 'error', 
-                text: 'Password must be at least 6 characters long.' 
+                text: 'Password is required.' 
             }];
             return res.redirect('/register');
         }
