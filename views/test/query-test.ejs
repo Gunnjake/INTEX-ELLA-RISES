@@ -1,120 +1,46 @@
-<%- include('../partials/header', { title: 'Query Testing - Ella Rises', user: typeof user !== 'undefined' ? user : null }) %>
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
 
-<div class="page-header">
-    <h1>Query Testing Page</h1>
-    <p>Test database queries and see their results</p>
-</div>
+<h2>Test Login Query</h2>
 
-<div class="form-container" style="max-width: 1000px; margin: 0 auto;">
-    <!-- Test Login Query Form -->
-    <div style="margin-bottom: 3rem; padding: 2rem; border: 2px solid var(--border-light); border-radius: 8px;">
-        <h2 style="margin-bottom: 1.5rem;">Test Login Query</h2>
-        
-        <!-- Show Query Being Submitted -->
-        <% if (typeof hasResults !== 'undefined' && hasResults) { %>
-            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #fff3cd; border-radius: 6px; border: 2px solid #ffc107;">
-                <h3 style="margin-bottom: 1rem; color: #856404;">📝 Query Being Submitted:</h3>
-                <p style="margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;"><strong>Email:</strong> <%= typeof testEmail !== 'undefined' ? testEmail : 'N/A' %></p>
-                <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;"><strong>Password:</strong> <%= typeof testPassword !== 'undefined' ? testPassword : 'N/A' %></p>
-                <% if (typeof actualQuery !== 'undefined' && actualQuery) { %>
-                    <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; border: 1px solid #ffc107; margin: 0;"><%= actualQuery %></pre>
-                <% } %>
-            </div>
-        <% } %>
-        
-        <% if (typeof loginError !== 'undefined' && loginError) { %>
-            <div class="flash-message flash-error" style="margin-bottom: 1rem;">
-                <strong>Error:</strong> <%= loginError %>
-            </div>
-        <% } %>
-        
-        <!-- Query Results -->
-        <% if (typeof hasResults !== 'undefined' && hasResults) { %>
-            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #d4edda; border-radius: 6px; border: 2px solid #28a745;">
-                <h3 style="margin-bottom: 1rem; color: #155724;">✅ Query Results:</h3>
-                <% if (typeof loginResult !== 'undefined' && loginResult) { %>
-                    <div style="margin-bottom: 1rem;">
-                        <h4 style="margin-bottom: 0.5rem; color: #155724; font-size: 1rem;">Formatted Result:</h4>
-                        <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #28a745;"><%= JSON.stringify(loginResult, null, 2) %></pre>
-                    </div>
-                <% } %>
-                
-                <% if (typeof rawOutput !== 'undefined' && rawOutput) { %>
-                    <div>
-                        <h4 style="margin-bottom: 0.5rem; color: #155724; font-size: 1rem;">Raw Database Output (All Fields):</h4>
-                        <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #28a745;"><%= JSON.stringify(rawOutput, null, 2) %></pre>
-                    </div>
-                <% } %>
-            </div>
-        <% } %>
-        
-        <% if (typeof queryResult !== 'undefined' && queryResult && (typeof hasResults === 'undefined' || !hasResults)) { %>
-            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #fff3cd; border-radius: 6px; border: 2px solid #ffc107;">
-                <h3 style="margin-bottom: 1rem; color: #856404;">People Table (All Records):</h3>
-                <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #ffc107;"><%= queryResult %></pre>
-            </div>
-        <% } %>
-        
-        <% if (typeof queryError !== 'undefined' && queryError) { %>
-            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f8d7da; border-radius: 6px; border: 2px solid #dc3545;">
-                <h3 style="margin-bottom: 1rem; color: #721c24;">❌ Query Error:</h3>
-                <p style="color: #721c24; font-size: 0.9rem;"><%= queryError %></p>
-            </div>
-        <% } %>
-        
-        <form action="/test-login-query" method="POST" aria-label="Test login query form">
-            <div class="form-group">
-                <label for="test-email">Email (Username) <span aria-label="required">*</span></label>
-                <input type="email" id="test-email" name="email" required autofocus aria-required="true" 
-                       value="<%= typeof testEmail !== 'undefined' ? testEmail : '' %>"
-                       placeholder="Enter email address">
-            </div>
-            <div class="form-group">
-                <label for="test-password">Password <span aria-label="required">*</span></label>
-                <input type="text" id="test-password" name="password" required aria-required="true"
-                       value="<%= typeof testPassword !== 'undefined' ? testPassword : '' %>"
-                       placeholder="Enter password (plain text)">
-                <small style="color: #666; font-size: 0.85rem;">Note: Password is shown as plain text for testing purposes</small>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Test Login Query</button>
-                <a href="/" class="btn btn-secondary">Back to Home</a>
-            </div>
-        </form>
+<form method="POST" action="/test-login-query" class="card p-4 mb-4" style="max-width: 500px;">
+    <div class="mb-3">
+        <label>Email</label>
+        <input class="form-control" type="text" name="email" value="<%= testEmail %>" required>
     </div>
-
-    <!-- Query Template Information -->
-    <div style="margin-top: 3rem; padding: 2rem; background: #f9f9f9; border-radius: 8px;">
-        <h2 style="margin-bottom: 1rem;">📋 Query Template (What Will Be Executed):</h2>
-        <p style="margin-bottom: 1rem; color: #666;">This is the SQL query template. When you submit the form above, the <code>?</code> will be replaced with your email address.</p>
-        <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; border: 1px solid #ddd;"><code>SELECT 
-    p.PersonID,
-    p.Email,
-    p.FirstName,
-    p.LastName,
-    r.RoleID,
-    r.RoleName,
-    CASE 
-        WHEN r.RoleID = 1 THEN ad.Password
-        WHEN r.RoleID = 2 THEN vd.Password
-        WHEN r.RoleID = 3 THEN pd.Password
-    END AS RolePassword,
-    ad.AdminRole,
-    ad.Salary,
-    vd.VolunteerRole,
-    pd.ParticipantSchoolOrEmployer,
-    pd.ParticipantFieldOfInterest,
-    pd.NewsLetter
-FROM People p
-JOIN PeopleRoles pr ON p.PersonID = pr.PersonID
-JOIN Roles r ON pr.RoleID = r.RoleID
-LEFT JOIN AdminDetails ad ON p.PersonID = ad.PersonID AND r.RoleID = 1
-LEFT JOIN VolunteerDetails vd ON p.PersonID = vd.PersonID AND r.RoleID = 2
-LEFT JOIN ParticipantDetails pd ON p.PersonID = pd.PersonID AND r.RoleID = 3
-WHERE p.Email = ?
-LIMIT 1</code></pre>
+    <div class="mb-3">
+        <label>Password</label>
+        <input class="form-control" type="password" name="password" value="<%= testPassword %>" required>
     </div>
-</div>
+    <button class="btn btn-primary w-100">Run Login Query</button>
+</form>
 
-<%- include('../partials/footer') %>
+<script>
+    <% if (queryError) { %>
+        alert("ERROR:\n\n<%= queryError.replace(/"/g, '\\"') %>");
+    <% } %>
 
+    <% if (queryResult) { %>
+        alert("Query Result:\n\n<%= queryResult.replace(/"/g, '\\"') %>");
+    <% } %>
+
+    <% if (loginError) { %>
+        alert("Login Error:\n\n<%= loginError.replace(/"/g, '\\"') %>");
+    <% } %>
+
+    <% if (loginResult) { %>
+        alert("Login Result:\n\n<%= JSON.stringify(loginResult, null, 2).replace(/"/g, '\\"') %>");
+    <% } %>
+
+    <% if (actualQuery) { %>
+        alert("SQL Used:\n\n<%= actualQuery.replace(/"/g, '\\"') %>");
+    <% } %>
+</script>
+
+</body>
+</html>

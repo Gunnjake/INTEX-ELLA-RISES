@@ -314,13 +314,17 @@ router.get('/test-login', (req, res) => {
     `);
 });
 
-// Query testing page - GET
+// ============================================================================
+// TEST LOGIN QUERY ROUTES (FULL WORKING VERSION)
+// ============================================================================
+
+// GET - Shows the test page
 router.get('/test-login-query', async (req, res) => {
     let queryResult = null;
     let queryError = null;
 
     try {
-        const data = await knexInstance('people').select('*');
+        const data = await knexInstance('People').select('*');
         queryResult = JSON.stringify(data, null, 2);
     } catch (err) {
         queryError = err.message || "Unknown error";
@@ -330,17 +334,25 @@ router.get('/test-login-query', async (req, res) => {
         title: 'Query Testing - Ella Rises',
         user: req.session.user || null,
         queryResult,
-        queryError
+        queryError,
+
+        // POST variables empty on GET
+        loginError: null,
+        loginResult: null,
+        rawOutput: null,
+        actualQuery: null,
+        testEmail: '',
+        testPassword: '',
+        hasResults: false
     });
 });
 
-// Query testing page - POST (test the login query)
+// POST - Run full login query
 router.post('/test-login-query', async (req, res) => {
     const sEmail = req.body.email;
     const sPassword = req.body.password;
 
     try {
-        // Run the same unified login query
         const userData = await knexInstance.raw(`
             SELECT 
                 p.PersonID,
@@ -376,56 +388,52 @@ router.post('/test-login-query', async (req, res) => {
             return res.render('test/query-test', {
                 title: 'Query Testing - Ella Rises',
                 user: req.session.user || null,
+
+                queryResult: null,
+                queryError: null,
+
                 loginError: 'No user found with that email',
-                testEmail: sEmail
+                loginResult: null,
+                rawOutput: null,
+                actualQuery: null,
+                testEmail: sEmail,
+                testPassword: sPassword,
+                hasResults: false
             });
         }
 
-        // Build result object showing all query data
         const result = {
             found: true,
             user: {
-                PersonID: user.PersonID,
-                Email: user.Email,
-                FirstName: user.FirstName,
-                LastName: user.LastName,
-                RoleID: user.RoleID,
-                RoleName: user.RoleName,
-                RolePassword: user.RolePassword ? '***SET***' : null, // Hide password in display
-                RolePasswordMatch: user.RolePassword === sPassword,
-                ProvidedPassword: sPassword
+                PersonID: user.personid,
+                Email: user.email,
+                FirstName: user.firstname,
+                LastName: user.lastname,
+                RoleID: user.roleid,
+                RoleName: user.rolename,
+                RolePassword: user.rolepassword ? "***SET***" : "(null)",
+                PasswordMatch: user.rolepassword === sPassword
             },
             roleDetails: {}
         };
 
-        // Add role-specific details
-        if (user.RoleID === 1) {
+        if (user.roleid === 1) {
             result.roleDetails = {
-                AdminRole: user.AdminRole,
-                Salary: user.Salary
+                AdminRole: user.adminrole,
+                Salary: user.salary
             };
-        } else if (user.RoleID === 2) {
+        } else if (user.roleid === 2) {
             result.roleDetails = {
-                VolunteerRole: user.VolunteerRole
+                VolunteerRole: user.volunteerrole
             };
-        } else if (user.RoleID === 3) {
+        } else if (user.roleid === 3) {
             result.roleDetails = {
-                ParticipantSchoolOrEmployer: user.ParticipantSchoolOrEmployer,
-                ParticipantFieldOfInterest: user.ParticipantFieldOfInterest,
-                NewsLetter: user.NewsLetter
+                ParticipantSchoolOrEmployer: user.participantschooloremployer,
+                ParticipantFieldOfInterest: user.participantfieldofinterest,
+                NewsLetter: user.newsletter
             };
         }
 
-        // Add password comparison result
-        result.passwordMatch = user.RolePassword === sPassword;
-        result.message = result.passwordMatch 
-            ? '✓ Password matches! Login would succeed.' 
-            : '✗ Password does not match. Login would fail.';
-
-        // Raw database output - show everything including password for testing
-        const rawOutput = { ...user };
-        
-        // Show the actual SQL query with variables substituted
         const actualQuery = `SELECT 
     p.PersonID,
     p.Email,
@@ -456,8 +464,13 @@ LIMIT 1`;
         res.render('test/query-test', {
             title: 'Query Testing - Ella Rises',
             user: req.session.user || null,
+
+            queryResult: null,
+            queryError: null,
+
+            loginError: null,
             loginResult: result,
-            rawOutput: rawOutput,
+            rawOutput: user,
             actualQuery: actualQuery,
             testEmail: sEmail,
             testPassword: sPassword,
@@ -466,11 +479,21 @@ LIMIT 1`;
 
     } catch (err) {
         console.error("Query test error:", err);
+
         res.render('test/query-test', {
             title: 'Query Testing - Ella Rises',
             user: req.session.user || null,
-            loginError: `Query Error: ${err.message}`,
-            testEmail: sEmail
+
+            queryResult: null,
+            queryError: null,
+
+            loginError: "Query Error: " + err.message,
+            loginResult: null,
+            rawOutput: null,
+            actualQuery: null,
+            testEmail: sEmail,
+            testPassword: sPassword,
+            hasResults: false
         });
     }
 });
