@@ -31,6 +31,20 @@
             </div>
         <% } %>
         
+        <% if (typeof queryResult !== 'undefined' && queryResult) { %>
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #fff3cd; border-radius: 6px; border: 2px solid #ffc107;">
+                <h3 style="margin-bottom: 1rem; color: #856404;">People Table Query Result:</h3>
+                <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #ffc107;"><%= queryResult %></pre>
+            </div>
+        <% } %>
+        
+        <% if (typeof queryError !== 'undefined' && queryError) { %>
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f8d7da; border-radius: 6px; border: 2px solid #dc3545;">
+                <h3 style="margin-bottom: 1rem; color: #721c24;">Query Error:</h3>
+                <p style="color: #721c24; font-size: 0.9rem;"><%= queryError %></p>
+            </div>
+        <% } %>
+        
         <form action="/test-login-query" method="POST" aria-label="Test login query form">
             <div class="form-group">
                 <label for="test-email">Email <span aria-label="required">*</span></label>

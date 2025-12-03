@@ -312,10 +312,22 @@ router.get('/test-login', (req, res) => {
 });
 
 // Query testing page - GET
-router.get('/test-login-query', (req, res) => {
+router.get('/test-login-query', async (req, res) => {
+    let queryResult = null;
+    let queryError = null;
+
+    try {
+        const data = await db('people').select('*');
+        queryResult = JSON.stringify(data, null, 2);
+    } catch (err) {
+        queryError = err.message || "Unknown error";
+    }
+
     res.render('test/query-test', {
         title: 'Query Testing - Ella Rises',
-        user: req.session.user || null
+        user: req.session.user || null,
+        queryResult,
+        queryError
     });
 });
 
