@@ -347,8 +347,8 @@ router.post('/login', async (req, res) => {
     const sPassword = req.body.password;
 
     try {
-        const userRoleData = await db('people')
-            .join('peopleroles', 'people.email', 'peopleroles.email')
+        const userRoleData = await knex('people')
+            .join('peopleroles', 'people.personid', 'peopleroles.personid')
             .join('roles', 'peopleroles.roleid', 'roles.roleid')
             .select('people.email', 'roles.roleid', 'roles.rolename')
             .where('people.email', sEmail)
@@ -363,15 +363,15 @@ router.post('/login', async (req, res) => {
 
         switch (roleName) {
             case 'Admin':
-                validUser = await db('admindetails')
-                    .select('email', 'username')
+                validUser = await knex('admindetails')
+                    .select('password')
                     .where({ email: sEmail, passwordhash: sPassword })
                     .first();
                 break;
 
             case 'Volunteer':
-                validUser = await db('volunteerdetails')
-                    .select('email', 'username')
+                validUser = await knex('volunteerdetails')
+                    .select('password')
                     .where({ email: sEmail, passwordhash: sPassword })
                     .first();
                 break;
