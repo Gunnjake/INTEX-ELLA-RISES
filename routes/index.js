@@ -432,82 +432,79 @@ router.post('/test-login-query', async (req, res) => {
     }
 });
 
-// Login form submission - plain text password comparison
-// Login form submission - single unified query with conditional role details
+// Login form submission - using COALESCE with LEFT JOINs
 router.post('/login', async (req, res) => {
     const sEmail = req.body.username;
     const sPassword = req.body.password;
 
     try {
-        // Single unified query that finds person, resolves role, and gets role-specific password
-        const userData = await db.raw(`
-            SELECT 
-                p.PersonID,
-                p.Email,
-                p.FirstName,
-                p.LastName,
-                r.RoleID,
-                r.RoleName,
-                CASE 
-                    WHEN r.RoleID = 1 THEN ad.Password
-                    WHEN r.RoleID = 2 THEN vd.Password
-                    WHEN r.RoleID = 3 THEN pd.Password
-                END AS RolePassword,
-                ad.AdminRole,
-                ad.Salary,
-                vd.VolunteerRole,
-                pd.ParticipantSchoolOrEmployer,
-                pd.ParticipantFieldOfInterest,
-                pd.NewsLetter
-            FROM People p
-            JOIN PeopleRoles pr ON p.PersonID = pr.PersonID
-            JOIN Roles r ON pr.RoleID = r.RoleID
-            LEFT JOIN AdminDetails ad ON p.PersonID = ad.PersonID AND r.RoleID = 1
-            LEFT JOIN VolunteerDetails vd ON p.PersonID = vd.PersonID AND r.RoleID = 2
-            LEFT JOIN ParticipantDetails pd ON p.PersonID = pd.PersonID AND r.RoleID = 3
-            WHERE p.Email = ?
-            LIMIT 1
-        `, [sEmail]);
-
-        const user = userData.rows && userData.rows.length > 0 ? userData.rows[0] : null;
+        // Single query using COALESCE to get password from appropriate detail table
+        const user = await db('people')
+            .select(
+                'people.personid',
+                'people.email',
+                'people.firstname',
+                'people.lastname',
+                'roles.roleid',
+                'roles.rolename',
+                // COALESCE takes the first non-null value from the three detail tables
+                db.raw('COALESCE(admindetails.password, volunteerdetails.password, participantdetails.password) as stored_password'),
+                'admindetails.adminrole',
+                'admindetails.salary',
+                'volunteerdetails.volunteerrole',
+                'participantdetails.participantschooloremployer',
+                'participantdetails.participantfieldofinterest',
+                'participantdetails.newsletter'
+            )
+            // Join roles through PeopleRoles junction table
+            .innerJoin('peopleroles', 'people.personid', 'peopleroles.personid')
+            .innerJoin('roles', 'peopleroles.roleid', 'roles.roleid')
+            // LEFT JOIN allows user to exist in any of the detail tables
+            .leftJoin('admindetails', 'people.personid', 'admindetails.personid')
+            .leftJoin('volunteerdetails', 'people.personid', 'volunteerdetails.personid')
+            .leftJoin('participantdetails', 'people.personid', 'participantdetails.personid')
+            .where('people.email', sEmail)
+            .first();
 
         if (!user) {
             return res.render("auth/login", { error_message: "Invalid email or password" });
         }
 
-        // Check if password matches (plain text comparison as per requirements)
-        if (user.RolePassword !== sPassword) {
+        // Direct string comparison (no bcrypt)
+        const match = user.stored_password === sPassword;
+        
+        if (!match) {
             return res.render("auth/login", { error_message: "Invalid email or password" });
         }
 
         // Build role-specific details object
         const roleDetails = {};
-        if (user.RoleID === 1) {
+        if (user.roleid === 1) {
             // Admin
-            roleDetails.AdminRole = user.AdminRole;
-            roleDetails.Salary = user.Salary;
-        } else if (user.RoleID === 2) {
+            roleDetails.AdminRole = user.adminrole;
+            roleDetails.Salary = user.salary;
+        } else if (user.roleid === 2) {
             // Volunteer
-            roleDetails.VolunteerRole = user.VolunteerRole;
-        } else if (user.RoleID === 3) {
+            roleDetails.VolunteerRole = user.volunteerrole;
+        } else if (user.roleid === 3) {
             // Participant
-            roleDetails.ParticipantSchoolOrEmployer = user.ParticipantSchoolOrEmployer;
-            roleDetails.ParticipantFieldOfInterest = user.ParticipantFieldOfInterest;
-            roleDetails.NewsLetter = user.NewsLetter;
+            roleDetails.ParticipantSchoolOrEmployer = user.participantschooloremployer;
+            roleDetails.ParticipantFieldOfInterest = user.participantfieldofinterest;
+            roleDetails.NewsLetter = user.newsletter;
         }
 
         // Set session data
         req.session.isLoggedIn = true;
         req.session.user = {
-            id: user.PersonID,
-            PersonID: user.PersonID,
-            username: user.Email,
-            email: user.Email,
-            firstName: user.FirstName,
-            lastName: user.LastName,
-            role: user.RoleName.toLowerCase() === 'admin' ? 'manager' : 'user',
-            RoleID: user.RoleID,
-            RoleName: user.RoleName,
+            id: user.personid,
+            PersonID: user.personid,
+            username: user.email,
+            email: user.email,
+            firstName: user.firstname,
+            lastName: user.lastname,
+            role: user.rolename && user.rolename.toLowerCase() === 'admin' ? 'manager' : 'user',
+            RoleID: user.roleid,
+            RoleName: user.rolename,
             RoleDetails: roleDetails
         };
 
