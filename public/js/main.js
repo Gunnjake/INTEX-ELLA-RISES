@@ -102,12 +102,9 @@ function validateField(field) {
         }
     }
 
-    // Check password length
+    // Password can be any length - just check it exists
     if (field.type === 'password' && field.value) {
-        if (field.value.length < 8) {
-            showFieldError(field, 'Password must be at least 8 characters long');
-            return false;
-        }
+        // Password validation removed - any length allowed
     }
 
     // Check URL format

@@ -544,13 +544,13 @@ router.post('/setup-password', async (req, res) => {
         return res.redirect('/login');
     }
     
-    // Validate passwords
-    if (!password || password.length < 1) {
+    // Validate password exists (any length allowed)
+    if (!password) {
         return res.render('auth/setup-password', {
             title: 'Setup Password - Ella Rises',
             username: username || '',
             email: email || '',
-            error: 'Password must be at least 1 characters long',
+            error: 'Password is required',
             user: null
         });
     }
