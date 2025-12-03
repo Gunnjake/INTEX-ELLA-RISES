@@ -7,6 +7,41 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { requireAuth, requireManager } = require('../middleware/auth');
+
+//this is the code for the email thing using nodemailer
+const nodemailer = require("nodemailer");
+
+//this is a test account for it NONE OF THIS CAN BE CHANGED 
+// AND IF WE DELETE IT HERE IT WILL BE GONE AND YOU HAVE TO MAKE A NEW ONE
+// NONE OF THIS CAN BE MADE IT IS AUTO GENERATED THRU ETHEREAL: 
+const transporter = nodemailer.createTransport({
+    host: "smtp.ethereal.email",
+    port: 587,
+  secure: false, // true for 465, false for other ports
+    auth: 
+    {
+        // test account name is Melyssa Kessler
+        user: "melyssa.kessler64@ethereal.email",
+        pass: "xHvH6nmX8u4JWpZmyk",
+    },
+});
+
+// Wrap in an async IIFE so we can use await.
+(async () => {
+    const info = await transporter.sendMail({
+    from: '"Melyssa Kessler" <melyssa.kessler64@ethereal.email>',
+    to: "gunnjake@byu.edu, blanesantilli@gmail.com",
+    subject: "Hello ✔",
+    text: "Hello world?", // plain‑text body
+    html: "<b>Hello world?</b>", // HTML body
+    });
+
+    console.log("Message sent:", info.messageId);
+    console.log('Preview URL: ' + nodemailer.getTestMessageUrl(info));
+})();
+
+
+
 // const db = require('../db'); // Will be uncommented when database is ready
 
 // ============================================================================
