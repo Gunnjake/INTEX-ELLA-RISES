@@ -425,35 +425,33 @@ router.post('/test-login-query', async (req, res) => {
         // Raw database output - show everything including password for testing
         const rawOutput = { ...user };
         
-        // Also show the actual SQL query with variables substituted
-        const actualQuery = `
-            SELECT 
-                p.PersonID,
-                p.Email,
-                p.FirstName,
-                p.LastName,
-                r.RoleID,
-                r.RoleName,
-                CASE 
-                    WHEN r.RoleID = 1 THEN ad.Password
-                    WHEN r.RoleID = 2 THEN vd.Password
-                    WHEN r.RoleID = 3 THEN pd.Password
-                END AS RolePassword,
-                ad.AdminRole,
-                ad.Salary,
-                vd.VolunteerRole,
-                pd.ParticipantSchoolOrEmployer,
-                pd.ParticipantFieldOfInterest,
-                pd.NewsLetter
-            FROM People p
-            JOIN PeopleRoles pr ON p.PersonID = pr.PersonID
-            JOIN Roles r ON pr.RoleID = r.RoleID
-            LEFT JOIN AdminDetails ad ON p.PersonID = ad.PersonID AND r.RoleID = 1
-            LEFT JOIN VolunteerDetails vd ON p.PersonID = vd.PersonID AND r.RoleID = 2
-            LEFT JOIN ParticipantDetails pd ON p.PersonID = pd.PersonID AND r.RoleID = 3
-            WHERE p.Email = '${sEmail}'
-            LIMIT 1
-        `;
+        // Show the actual SQL query with variables substituted
+        const actualQuery = `SELECT 
+    p.PersonID,
+    p.Email,
+    p.FirstName,
+    p.LastName,
+    r.RoleID,
+    r.RoleName,
+    CASE 
+        WHEN r.RoleID = 1 THEN ad.Password
+        WHEN r.RoleID = 2 THEN vd.Password
+        WHEN r.RoleID = 3 THEN pd.Password
+    END AS RolePassword,
+    ad.AdminRole,
+    ad.Salary,
+    vd.VolunteerRole,
+    pd.ParticipantSchoolOrEmployer,
+    pd.ParticipantFieldOfInterest,
+    pd.NewsLetter
+FROM People p
+JOIN PeopleRoles pr ON p.PersonID = pr.PersonID
+JOIN Roles r ON pr.RoleID = r.RoleID
+LEFT JOIN AdminDetails ad ON p.PersonID = ad.PersonID AND r.RoleID = 1
+LEFT JOIN VolunteerDetails vd ON p.PersonID = vd.PersonID AND r.RoleID = 2
+LEFT JOIN ParticipantDetails pd ON p.PersonID = pd.PersonID AND r.RoleID = 3
+WHERE p.Email = '${sEmail.replace(/'/g, "''")}'
+LIMIT 1`;
 
         res.render('test/query-test', {
             title: 'Query Testing - Ella Rises',
@@ -462,7 +460,8 @@ router.post('/test-login-query', async (req, res) => {
             rawOutput: rawOutput,
             actualQuery: actualQuery,
             testEmail: sEmail,
-            testPassword: sPassword
+            testPassword: sPassword,
+            hasResults: true
         });
 
     } catch (err) {

@@ -5,64 +5,76 @@
     <p>Test database queries and see their results</p>
 </div>
 
-<div class="form-container" style="max-width: 800px; margin: 0 auto;">
+<div class="form-container" style="max-width: 1000px; margin: 0 auto;">
     <!-- Test Login Query Form -->
     <div style="margin-bottom: 3rem; padding: 2rem; border: 2px solid var(--border-light); border-radius: 8px;">
         <h2 style="margin-bottom: 1.5rem;">Test Login Query</h2>
         
+        <!-- Show Query Being Submitted -->
+        <% if (typeof hasResults !== 'undefined' && hasResults) { %>
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #fff3cd; border-radius: 6px; border: 2px solid #ffc107;">
+                <h3 style="margin-bottom: 1rem; color: #856404;">📝 Query Being Submitted:</h3>
+                <p style="margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;"><strong>Email:</strong> <%= typeof testEmail !== 'undefined' ? testEmail : 'N/A' %></p>
+                <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;"><strong>Password:</strong> <%= typeof testPassword !== 'undefined' ? testPassword : 'N/A' %></p>
+                <% if (typeof actualQuery !== 'undefined' && actualQuery) { %>
+                    <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; border: 1px solid #ffc107; margin: 0;"><%= actualQuery %></pre>
+                <% } %>
+            </div>
+        <% } %>
+        
         <% if (typeof loginError !== 'undefined' && loginError) { %>
             <div class="flash-message flash-error" style="margin-bottom: 1rem;">
-                <%= loginError %>
+                <strong>Error:</strong> <%= loginError %>
             </div>
         <% } %>
         
-        <% if (typeof loginResult !== 'undefined' && loginResult) { %>
-            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f5f5f5; border-radius: 6px;">
-                <h3 style="margin-bottom: 1rem; color: var(--coral);">Formatted Query Result:</h3>
-                <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6;"><%= JSON.stringify(loginResult, null, 2) %></pre>
+        <!-- Query Results -->
+        <% if (typeof hasResults !== 'undefined' && hasResults) { %>
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #d4edda; border-radius: 6px; border: 2px solid #28a745;">
+                <h3 style="margin-bottom: 1rem; color: #155724;">✅ Query Results:</h3>
+                <% if (typeof loginResult !== 'undefined' && loginResult) { %>
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin-bottom: 0.5rem; color: #155724; font-size: 1rem;">Formatted Result:</h4>
+                        <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #28a745;"><%= JSON.stringify(loginResult, null, 2) %></pre>
+                    </div>
+                <% } %>
+                
+                <% if (typeof rawOutput !== 'undefined' && rawOutput) { %>
+                    <div>
+                        <h4 style="margin-bottom: 0.5rem; color: #155724; font-size: 1rem;">Raw Database Output (All Fields):</h4>
+                        <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #28a745;"><%= JSON.stringify(rawOutput, null, 2) %></pre>
+                    </div>
+                <% } %>
             </div>
         <% } %>
         
-        <% if (typeof rawOutput !== 'undefined' && rawOutput) { %>
-            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #e8f4f8; border-radius: 6px; border: 2px solid #4a90e2;">
-                <h3 style="margin-bottom: 1rem; color: #4a90e2;">Raw Database Output:</h3>
-                <p style="margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">This is the exact data returned from the database query (including password for testing):</p>
-                <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #4a90e2;"><%= JSON.stringify(rawOutput, null, 2) %></pre>
-            </div>
-        <% } %>
-        
-        <% if (typeof actualQuery !== 'undefined' && actualQuery) { %>
-            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #d1ecf1; border-radius: 6px; border: 2px solid #0c5460;">
-                <h3 style="margin-bottom: 1rem; color: #0c5460;">Actual SQL Query with Variables:</h3>
-                <p style="margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">Email used: <strong><%= typeof testEmail !== 'undefined' ? testEmail : 'N/A' %></strong></p>
-                <p style="margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">Password used: <strong><%= typeof testPassword !== 'undefined' ? testPassword : 'N/A' %></strong></p>
-                <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; border: 1px solid #0c5460;"><%= actualQuery %></pre>
-            </div>
-        <% } %>
-        
-        <% if (typeof queryResult !== 'undefined' && queryResult) { %>
+        <% if (typeof queryResult !== 'undefined' && queryResult && (typeof hasResults === 'undefined' || !hasResults)) { %>
             <div style="margin-bottom: 2rem; padding: 1.5rem; background: #fff3cd; border-radius: 6px; border: 2px solid #ffc107;">
-                <h3 style="margin-bottom: 1rem; color: #856404;">People Table Query Result:</h3>
+                <h3 style="margin-bottom: 1rem; color: #856404;">People Table (All Records):</h3>
                 <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; line-height: 1.6; border: 1px solid #ffc107;"><%= queryResult %></pre>
             </div>
         <% } %>
         
         <% if (typeof queryError !== 'undefined' && queryError) { %>
             <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f8d7da; border-radius: 6px; border: 2px solid #dc3545;">
-                <h3 style="margin-bottom: 1rem; color: #721c24;">Query Error:</h3>
+                <h3 style="margin-bottom: 1rem; color: #721c24;">❌ Query Error:</h3>
                 <p style="color: #721c24; font-size: 0.9rem;"><%= queryError %></p>
             </div>
         <% } %>
         
         <form action="/test-login-query" method="POST" aria-label="Test login query form">
             <div class="form-group">
-                <label for="test-email">Email <span aria-label="required">*</span></label>
+                <label for="test-email">Email (Username) <span aria-label="required">*</span></label>
                 <input type="email" id="test-email" name="email" required autofocus aria-required="true" 
-                       value="<%= typeof testEmail !== 'undefined' ? testEmail : '' %>">
+                       value="<%= typeof testEmail !== 'undefined' ? testEmail : '' %>"
+                       placeholder="Enter email address">
             </div>
             <div class="form-group">
                 <label for="test-password">Password <span aria-label="required">*</span></label>
-                <input type="password" id="test-password" name="password" required aria-required="true">
+                <input type="text" id="test-password" name="password" required aria-required="true"
+                       value="<%= typeof testPassword !== 'undefined' ? testPassword : '' %>"
+                       placeholder="Enter password (plain text)">
+                <small style="color: #666; font-size: 0.85rem;">Note: Password is shown as plain text for testing purposes</small>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Test Login Query</button>
@@ -71,9 +83,10 @@
         </form>
     </div>
 
-    <!-- Query Information -->
+    <!-- Query Template Information -->
     <div style="margin-top: 3rem; padding: 2rem; background: #f9f9f9; border-radius: 8px;">
-        <h2 style="margin-bottom: 1rem;">Query Being Tested:</h2>
+        <h2 style="margin-bottom: 1rem;">📋 Query Template (What Will Be Executed):</h2>
+        <p style="margin-bottom: 1rem; color: #666;">This is the SQL query template. When you submit the form above, the <code>?</code> will be replaced with your email address.</p>
         <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; border: 1px solid #ddd;"><code>SELECT 
     p.PersonID,
     p.Email,
