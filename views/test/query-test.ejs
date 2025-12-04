@@ -36,7 +36,13 @@
 <!-- RESULTS -->
 <% if (results) { %>
 <div class="alert alert-success">
-    <strong>Results:</strong>
+    <strong>Query Results:</strong>
+    <% if (results.rowCount !== undefined) { %>
+        <p><strong>Rows Found:</strong> <%= results.rowCount %></p>
+        <% if (results.rowCount === 0) { %>
+            <p class="text-warning">No records found for this email.</p>
+        <% } %>
+    <% } %>
     <pre><%= JSON.stringify(results, null, 2) %></pre>
 </div>
 <% } %>

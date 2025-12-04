@@ -365,18 +365,42 @@ WHERE p.email = ?
     `;
 
     try {
-        const results = await knexInstance.raw(sqlQuery, [email]);
+        const queryResult = await knexInstance.raw(sqlQuery, [email]);
+        
+        // Debug: log the full result structure
+        console.log('Query result structure:', {
+            hasRows: !!queryResult.rows,
+            rowsLength: queryResult.rows ? queryResult.rows.length : 0,
+            firstRow: queryResult.rows && queryResult.rows.length > 0 ? queryResult.rows[0] : null,
+            fullResult: queryResult
+        });
+
+        // Handle different result structures (PostgreSQL returns rows array)
+        const rows = queryResult.rows || queryResult || [];
+        
+        // Create a comprehensive result object that shows everything
+        const displayResults = {
+            emailSearched: email,
+            rowCount: rows.length,
+            rows: rows,
+            rawResultStructure: {
+                hasRows: !!queryResult.rows,
+                keys: Object.keys(queryResult),
+                rowsType: Array.isArray(rows) ? 'array' : typeof rows
+            }
+        };
 
         return res.render('test/query-test', {
             title: "Query Testing - Ella Rises",
             user: req.session.user || null,
-            results: results.rows,
+            results: displayResults,
             actualQuery: sqlQuery.replace("?", `'${email.replace(/'/g, "''")}'`),
-            error: null,
+            error: rows.length === 0 ? `No records found for email: ${email}` : null,
             emailInput: email
         });
 
     } catch (err) {
+        console.error('Query error:', err);
         return res.render('test/query-test', {
             title: "Query Testing - Ella Rises",
             user: req.session.user || null,
