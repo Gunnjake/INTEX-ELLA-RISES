@@ -61,87 +61,135 @@
         </div>
     </div>
 <% } else { %>
-    <!-- Regular user sees their registrations and surveys -->
-    <div class="page-header">
-        <h1>My Dashboard</h1>
-        <p>Welcome, <%= user.username %>! View your program registrations.</p>
+    <!-- Participant Dashboard -->
+    <div class="page-header" style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: 600; color: var(--text-dark); margin-bottom: 0.25rem;">Dashboard</h1>
+        <p style="font-size: 0.95rem; color: var(--text-secondary);">Welcome, <%= user.firstName || user.username || 'Participant' %></p>
     </div>
 
-    <div class="card">
+    <!-- Stats Overview -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="border-left: 4px solid var(--coral); padding: 1.25rem;">
+            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">Event Registrations</div>
+            <div style="font-size: 2rem; font-weight: 600; color: var(--text-dark);"><%= typeof registrations !== 'undefined' ? registrations.length : 0 %></div>
+        </div>
+        <div class="card" style="border-left: 4px solid var(--lavender); padding: 1.25rem;">
+            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">Survey Responses</div>
+            <div style="font-size: 2rem; font-weight: 600; color: var(--text-dark);"><%= typeof surveys !== 'undefined' ? surveys.length : 0 %></div>
+        </div>
+        <div class="card" style="border-left: 4px solid var(--sage); padding: 1.25rem;">
+            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">Average Rating</div>
+            <div style="font-size: 2rem; font-weight: 600; color: var(--text-dark);">
+                <% 
+                    if (typeof surveys !== 'undefined' && surveys.length > 0) {
+                        let totalScore = 0;
+                        let count = 0;
+                        surveys.forEach(s => {
+                            const sat = parseInt(s.SatisfactionScore || s.satisfaction_score || 0);
+                            const use = parseInt(s.UsefulnessScore || s.usefulness_score || 0);
+                            const rec = parseInt(s.RecommendationScore || s.recommendation_score || 0);
+                            if (sat > 0) { totalScore += sat; count++; }
+                            if (use > 0) { totalScore += use; count++; }
+                            if (rec > 0) { totalScore += rec; count++; }
+                        });
+                        const avg = count > 0 ? (totalScore / count).toFixed(1) : '0.0';
+                %>
+                    <%= avg %>/5
+                <% } else { %>
+                    0.0/5
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Registrations Section -->
+    <div class="card" style="margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 class="card-header" style="margin: 0;">My Program Registrations</h2>
-            <a href="/register" class="btn btn-primary">Register for Another Program</a>
+            <h2 class="card-header" style="margin: 0;">Event Registrations</h2>
+            <a href="/events" class="btn btn-primary">Register for Event</a>
         </div>
         
         <% if (typeof registrations !== 'undefined' && registrations.length > 0) { %>
             <div class="registrations-list">
                 <% registrations.forEach(reg => { %>
-                    <div class="registration-item" style="padding: 1.5rem; margin-bottom: 1rem; background: var(--pink-bg); border-radius: 8px; border-left: 4px solid var(--coral);">
-                        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);"><%= reg.program %></h3>
-                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
-                            Registered on <%= new Date(reg.registrationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
-                        </p>
+                    <div class="registration-item" style="padding: 1.25rem; margin-bottom: 0.75rem; background: var(--pink-bg); border-radius: 6px; border-left: 3px solid var(--coral);">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.1rem; font-weight: 600;"><%= reg.program %></h3>
+                                <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+                                    Registered on <%= new Date(reg.registrationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                                </p>
+                            </div>
+                            <span style="background: var(--coral); color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; white-space: nowrap;">Registered</span>
+                        </div>
                     </div>
                 <% }); %>
             </div>
         <% } else { %>
-            <div style="padding: 3rem; text-align: center; background: var(--pink-bg); border-radius: 8px;">
-                <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                    You are not currently registered for any programs.
+            <div style="padding: 3rem 2rem; text-align: center; background: var(--pink-bg); border-radius: 6px;">
+                <p style="font-size: 1rem; color: var(--text-dark); margin-bottom: 0.5rem; font-weight: 500;">
+                    No event registrations
                 </p>
-                <a href="/register" class="btn btn-primary">Register for a Program</a>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    Register for upcoming events to get started
+                </p>
+                <a href="/events" class="btn btn-primary">Browse Events</a>
             </div>
         <% } %>
     </div>
 
-    <div class="card mt-2">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 class="card-header" style="margin: 0;">My Survey Responses</h2>
-        </div>
+    <!-- Survey Responses Section -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 class="card-header" style="margin-bottom: 1.5rem;">Survey Responses</h2>
         
         <% if (typeof surveys !== 'undefined' && surveys.length > 0) { %>
             <div class="surveys-list">
                 <% surveys.forEach(survey => { %>
-                    <div class="survey-item" style="padding: 1.5rem; margin-bottom: 1rem; background: var(--pink-bg); border-radius: 8px; border-left: 4px solid var(--coral);">
-                        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);"><%= survey.eventName || 'Event' %></h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 0.75rem;">
+                    <div class="survey-item" style="padding: 1.25rem; margin-bottom: 0.75rem; background: var(--pink-bg); border-radius: 6px; border-left: 3px solid var(--lavender);">
+                        <h3 style="margin: 0 0 1rem 0; color: var(--text-dark); font-size: 1.1rem; font-weight: 600;"><%= survey.eventName || 'Event' %></h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                             <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.85rem;">Satisfaction:</strong>
-                                <span style="color: var(--text-dark); font-weight: 600;"><%= survey.SatisfactionScore || survey.satisfaction_score || 'N/A' %>/5</span>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; font-weight: 500;">Satisfaction</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: var(--text-dark);"><%= survey.SatisfactionScore || survey.satisfaction_score || 'N/A' %>/5</div>
                             </div>
                             <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.85rem;">Usefulness:</strong>
-                                <span style="color: var(--text-dark); font-weight: 600;"><%= survey.UsefulnessScore || survey.usefulness_score || 'N/A' %>/5</span>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; font-weight: 500;">Usefulness</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: var(--text-dark);"><%= survey.UsefulnessScore || survey.usefulness_score || 'N/A' %>/5</div>
                             </div>
                             <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.85rem;">Recommendation:</strong>
-                                <span style="color: var(--text-dark); font-weight: 600;"><%= survey.RecommendationScore || survey.recommendation_score || 'N/A' %>/5</span>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; font-weight: 500;">Recommendation</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: var(--text-dark);"><%= survey.RecommendationScore || survey.recommendation_score || 'N/A' %>/5</div>
                             </div>
                         </div>
                         <% if (survey.Comments || survey.comments) { %>
-                            <p style="margin: 0.5rem 0 0 0; color: var(--text-dark); font-size: 0.9rem;">
-                                <strong>Comments:</strong> <%= survey.Comments || survey.comments %>
-                            </p>
+                            <div style="padding: 0.875rem; background: white; border-radius: 4px; margin-bottom: 0.75rem;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">Comments</div>
+                                <p style="margin: 0; color: var(--text-dark); font-size: 0.875rem; line-height: 1.5;"><%= survey.Comments || survey.comments %></p>
+                            </div>
                         <% } %>
-                        <p style="margin: 0.75rem 0 0 0; color: var(--text-secondary); font-size: 0.85rem;">
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
                             Submitted on <%= new Date(survey.SurveySubmissionDate || survey.survey_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
                         </p>
                     </div>
                 <% }); %>
             </div>
         <% } else { %>
-            <div style="padding: 2rem; text-align: center; background: var(--pink-bg); border-radius: 8px;">
-                <p style="font-size: 1rem; color: var(--text-secondary);">
-                    You haven't submitted any survey responses yet.
+            <div style="padding: 3rem 2rem; text-align: center; background: var(--pink-bg); border-radius: 6px;">
+                <p style="font-size: 1rem; color: var(--text-dark); margin-bottom: 0.5rem; font-weight: 500;">
+                    No survey responses
+                </p>
+                <p style="font-size: 0.875rem; color: var(--text-secondary);">
+                    Complete surveys after attending events to share your feedback
                 </p>
             </div>
         <% } %>
     </div>
 
-    <div class="card mt-2">
-        <h2 class="card-header">Quick Actions</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-            <a href="/register" class="btn btn-secondary" style="text-align: center; padding: 1rem;">Register for Program</a>
+    <!-- Quick Actions Section -->
+    <div class="card">
+        <h2 class="card-header" style="margin-bottom: 1.5rem;">Quick Actions</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <a href="/events" class="btn btn-secondary" style="text-align: center; padding: 1rem;">Register for Event</a>
             <a href="/events" class="btn btn-secondary" style="text-align: center; padding: 1rem;">View All Events</a>
             <a href="/contact" class="btn btn-secondary" style="text-align: center; padding: 1rem;">Contact Us</a>
         </div>
