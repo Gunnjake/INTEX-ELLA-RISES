@@ -12,7 +12,7 @@ Ella Rises is a web application for managing STEAM programs, cultural heritage p
 
 ### Admin Login
 
-**Email:** admin@ella.com  
+**Email:** admin@hotmail.com  
 **Password:** admin
 
 **Admin Features:**
@@ -27,7 +27,7 @@ Ella Rises is a web application for managing STEAM programs, cultural heritage p
 
 ### User Login (Participant)
 
-**Email:** user@ella.com  
+**Email:** elizabeth.harris7@learners.net  
 **Password:** user
 
 **Participant Features:**
@@ -41,7 +41,7 @@ Ella Rises is a web application for managing STEAM programs, cultural heritage p
 
 ### Volunteer Login
 
-**Email:** volunteer@ella.com  
+**Email:** elijah.hill13@ellarises.org  
 **Password:** volunteer
 
 **Volunteer Features:**
