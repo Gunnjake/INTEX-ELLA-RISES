@@ -166,14 +166,45 @@
             <fieldset class="form-section">
                 <legend class="section-header">Program Selection</legend>
                 <div class="form-group">
-                    <label for="program">Program Interest <span aria-label="required">*</span></label>
+                    <label for="program">Select Event to Register For <span aria-label="required">*</span></label>
                     <select id="program" name="program" required aria-required="true">
-                        <option value="">Select a program</option>
-                        <option value="Ballet Folklorico">Ballet Folklorico</option>
-                        <option value="Mariachi">Mariachi</option>
-                        <option value="STEAM">STEAM</option>
-                        <option value="Summit + Educational Pathways">Summit + Educational Pathways</option>
+                        <option value="">Select an event</option>
+                        <% if (typeof events !== 'undefined' && events.length > 0) { %>
+                            <% events.forEach(function(event) { %>
+                                <% 
+                                    const eventId = event.eventoccurrenceid || event.EventOccurrenceID;
+                                    const eventName = event.eventname || event.EventName || 'Event';
+                                    const eventDate = event.eventdatetimestart || event.EventDateTimeStart;
+                                    const eventLocation = event.eventlocation || event.EventLocation || '';
+                                    const eventType = event.eventtype || event.EventType || '';
+                                    
+                                    let displayText = eventName;
+                                    if (eventDate) {
+                                        try {
+                                            const date = new Date(eventDate);
+                                            const formattedDate = date.toLocaleDateString('en-US', { 
+                                                month: 'short', 
+                                                day: 'numeric', 
+                                                year: 'numeric' 
+                                            });
+                                            displayText += ` - ${formattedDate}`;
+                                        } catch (e) {
+                                            // If date parsing fails, just use the name
+                                        }
+                                    }
+                                    if (eventLocation) {
+                                        displayText += ` (${eventLocation})`;
+                                    }
+                                %>
+                                <option value="<%= eventId %>"><%= displayText %></option>
+                            <% }); %>
+                        <% } else { %>
+                            <option value="" disabled>No upcoming events available</option>
+                        <% } %>
                     </select>
+                    <% if (typeof events === 'undefined' || events.length === 0) { %>
+                        <small class="field-hint" style="color: var(--error-red);">Please check back later for upcoming events.</small>
+                    <% } %>
                 </div>
             </fieldset>
 
@@ -259,9 +290,9 @@ document.getElementById('registration-form')?.addEventListener('submit', functio
         !phone?.value?.trim() || !birthYear?.value || !birthMonth?.value || !birthDay?.value ||
         !schoolEmployer?.value?.trim() || !fieldOfInterest?.value?.trim() ||
         !city?.value?.trim() || !state?.value || !zip?.value?.trim() || !country?.value?.trim() ||
-        !program?.value) {
+        !program?.value || isNaN(parseInt(program.value))) {
         e.preventDefault();
-        alert('Please fill in all required fields (marked with *).');
+        alert('Please fill in all required fields (marked with *) and select a valid event.');
         return false;
     }
     

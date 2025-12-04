@@ -93,31 +93,30 @@ router.get('/programs', (req, res) => {
     });
 });
 
+// Redirect old /register to /create-account
 router.get('/register', (req, res) => {
-    res.render('public/register', {
-        title: 'Register - Ella Rises',
-        description: 'Register for Ella Rises programs and create your account. Join us in empowering the future generation of women.',
-        user: req.session.user || null
+    res.redirect('/create-account');
+});
+
+// GET /create-account - Account creation page
+router.get('/create-account', (req, res) => {
+    // If already logged in, redirect to home
+    if (req.session.user) {
+        return res.redirect('/');
+    }
+    
+    res.render('public/create-account', {
+        title: 'Create Account - Ella Rises',
+        description: 'Create your Ella Rises account to register for programs and events.',
+        user: null
     });
 });
 
-// register participant
-router.post('/register', async (req, res) => {
-    const { firstName, lastName, email, phone, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, password, confirmPassword } = req.body;
+// POST /create-account - Create account only (no event registration)
+router.post('/create-account', async (req, res) => {
+    const { firstName, lastName, email, phone, birthYear, birthMonth, birthDay, school_employer, field_of_interest, city, state, zip, country, password, confirmPassword, newsletter } = req.body;
     
     try {
-        // If already logged in, just register for program
-        if (req.session.user) {
-            const userId = req.session.user.id;
-            // save registration
-            
-            req.session.messages = [{ 
-                type: 'success', 
-                text: `Thank you! You've been registered for ${program}.` 
-            }];
-            return res.redirect('/register');
-        }
-        
         // Validate ALL required fields
         if (!firstName || !lastName || !email || !phone || !city || !state || !zip || !country || 
             !school_employer || !field_of_interest || !birthYear || !birthMonth || !birthDay || 
@@ -126,7 +125,7 @@ router.post('/register', async (req, res) => {
                 type: 'error', 
                 text: 'All fields are required. Please fill in all required fields.' 
             }];
-            return res.redirect('/register');
+            return res.redirect('/create-account');
         }
         
         // Validate password
@@ -135,7 +134,7 @@ router.post('/register', async (req, res) => {
                 type: 'error', 
                 text: 'Password must be at least 8 characters long.' 
             }];
-            return res.redirect('/register');
+            return res.redirect('/create-account');
         }
         
         if (password.length > 20) {
@@ -143,7 +142,7 @@ router.post('/register', async (req, res) => {
                 type: 'error', 
                 text: 'Password must be 20 characters or less.' 
             }];
-            return res.redirect('/register');
+            return res.redirect('/create-account');
         }
         
         if (password !== confirmPassword) {
@@ -151,7 +150,7 @@ router.post('/register', async (req, res) => {
                 type: 'error', 
                 text: 'Passwords do not match.' 
             }];
-            return res.redirect('/register');
+            return res.redirect('/create-account');
         }
         
         // Check email uniqueness
@@ -174,7 +173,7 @@ router.post('/register', async (req, res) => {
                 type: 'error', 
                 text: 'Please select a valid state.' 
             }];
-            return res.redirect('/register');
+            return res.redirect('/create-account');
         }
         
         // Convert birthday to YYYY-MM-DD format
@@ -187,7 +186,7 @@ router.post('/register', async (req, res) => {
                 type: 'error', 
                 text: 'Please enter a valid birthday.' 
             }];
-            return res.redirect('/register');
+            return res.redirect('/create-account');
         }
         
         // Validate date
@@ -197,92 +196,76 @@ router.post('/register', async (req, res) => {
                 type: 'error', 
                 text: 'Please enter a valid date.' 
             }];
-            return res.redirect('/register');
+            return res.redirect('/create-account');
         }
         
-        const birthdate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const birthdateValue = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const cleanEmail = email.toLowerCase().trim();
+        const newsletterValue = newsletter === 'yes' || newsletter === '1' ? 1 : 0;
         
-        console.log('[REGISTER] Starting registration for:', email);
+        console.log('[CREATE-ACCOUNT] Starting account creation for:', cleanEmail);
         
-        // Use transaction to ensure both inserts succeed
+        // Use transaction to ensure all inserts succeed
         await knexInstance.transaction(async (trx) => {
-            // Step 1: Create person record in People table
-            const [newPerson] = await trx('people')
-                .insert({
-                    firstname: firstName.trim(),
-                    lastname: lastName.trim(),
-                    email: email.toLowerCase().trim(),
-                    phonenumber: phone.trim(),
-                    city: city.trim(),
-                    state: stateValue,
-                    zip: zip.trim(),
-                    country: country.trim(),
-                    birthdate: birthdate,
-                    schooloremployer: school_employer.trim(),
-                    fieldofinterest: field_of_interest.trim()
-                })
-                .returning(['personid', 'email']);
-            
-            if (!newPerson || !newPerson.personid) {
-                throw new Error('Failed to create person record - no personid returned');
-            }
-            
-            const personId = newPerson.personid;
-            console.log('[REGISTER] Created person with personid:', personId);
-            
-            // Step 2: Insert into PeopleRoles with Participant role (roleid 1)
-            await trx('peopleroles')
-                .insert({
-                    personid: personId,
-                    roleid: 1 // Participant
-                })
-                .onConflict(['personid', 'roleid'])
-                .ignore();
-            
-            console.log('[REGISTER] Added Participant role for personid:', personId);
-            
-            // Step 3: Create participant details record
-            const participantDetailsData = {
-                personid: personId,
-                participantschooloremployer: school_employer.trim(),
-                participantfieldofinterest: field_of_interest.trim(),
-                newsletter: false
-            };
-            
-            // Check if participantdetails already exists
-            const existingParticipantDetails = await trx('participantdetails')
-                .where('personid', personId)
-                .first();
-            
-            if (existingParticipantDetails) {
-                await trx('participantdetails')
-                    .where('personid', personId)
-                    .update(participantDetailsData);
-            } else {
-                await trx('participantdetails')
-                    .insert(participantDetailsData);
-            }
-            
-            console.log('[REGISTER] Created/updated participant details for personid:', personId);
-            
-            // Step 4: Store password in volunteerdetails (per ERD: Participants → volunteerdetails.password)
-            const existingVolunteerDetails = await trx('volunteerdetails')
-                .where('personid', personId)
-                .first();
-            
-            if (existingVolunteerDetails) {
-                await trx('volunteerdetails')
-                    .where('personid', personId)
-                    .update({ password: password });
-            } else {
-                await trx('volunteerdetails')
+            try {
+                // Step 1: Create person record in people table
+                const [newPerson] = await trx('people')
+                    .insert({
+                        email: cleanEmail,
+                        firstname: firstName.trim(),
+                        lastname: lastName.trim(),
+                        birthdate: birthdateValue,
+                        phonenumber: phone.trim(),
+                        city: city.trim(),
+                        state: stateValue,
+                        zip: zip.trim(),
+                        country: country.trim()
+                    })
+                    .returning('personid');
+                
+                if (!newPerson || !newPerson.personid) {
+                    throw new Error('Failed to create person record - no personid returned');
+                }
+                
+                const personId = newPerson.personid;
+                console.log('[CREATE-ACCOUNT] People inserted:', personId);
+                
+                // Step 2: Insert into peopleroles with Participant role (roleid = 1)
+                await trx('peopleroles')
                     .insert({
                         personid: personId,
-                        password: password
+                        roleid: 1
+                    })
+                    .onConflict(['personid', 'roleid'])
+                    .ignore();
+                
+                console.log('[CREATE-ACCOUNT] PeopleRoles inserted');
+                
+                // Step 3: Create participantdetails record
+                await trx('participantdetails')
+                    .insert({
+                        personid: personId,
+                        participantschooloremployer: school_employer.trim(),
+                        participantfieldofinterest: field_of_interest.trim(),
+                        password: password,
+                        newsletter: newsletterValue
+                    })
+                    .onConflict('personid')
+                    .merge({
+                        participantschooloremployer: school_employer.trim(),
+                        participantfieldofinterest: field_of_interest.trim(),
+                        password: password,
+                        newsletter: newsletterValue
                     });
+                
+                console.log('[CREATE-ACCOUNT] ParticipantDetails inserted');
+            } catch (insertError) {
+                console.error('[CREATE-ACCOUNT] Insert error:', insertError);
+                console.error('[CREATE-ACCOUNT] Error code:', insertError.code);
+                console.error('[CREATE-ACCOUNT] Error detail:', insertError.detail);
+                console.error('[CREATE-ACCOUNT] Error constraint:', insertError.constraint);
+                throw insertError;
             }
-            
-            console.log('[REGISTER] Stored password in volunteerdetails for personid:', personId);
         });
         
         // Success - redirect to login
@@ -292,15 +275,15 @@ router.post('/register', async (req, res) => {
         }];
         res.redirect('/login');
     } catch (error) {
-        console.error('[REGISTER] Registration error:', error);
-        console.error('[REGISTER] Error details:', {
+        console.error('[CREATE-ACCOUNT] Account creation error:', error);
+        console.error('[CREATE-ACCOUNT] Error details:', {
             message: error.message,
             code: error.code,
             detail: error.detail,
             constraint: error.constraint
         });
         
-        let errorMessage = 'There was an error processing your registration. Please try again.';
+        let errorMessage = 'There was an error processing your account creation. Please try again.';
         if (error.code === '23505') { // Unique violation
             errorMessage = 'An account with this email already exists. Please login instead.';
         } else if (error.constraint) {
@@ -311,7 +294,17 @@ router.post('/register', async (req, res) => {
             type: 'error', 
             text: errorMessage 
         }];
-        res.redirect('/register');
+        res.redirect('/create-account');
+    }
+});
+
+// Old /register POST route removed - now separated into /create-account and /events/register
+// This route redirects to prevent old form submissions
+router.post('/register', (req, res) => {
+    if (req.session.user) {
+        res.redirect('/events/register');
+    } else {
+        res.redirect('/create-account');
     }
 });
 
@@ -341,12 +334,8 @@ router.get('/teapot', (req, res) => {
 // login page
 router.get('/login', (req, res) => {
     if (req.session && req.session.user) {
-        // Redirect managers to dashboard, participants to events
-        if (req.session.user.role === 'manager') {
-            return res.redirect('/dashboard');
-        } else {
-            return res.redirect('/events');
-        }
+        // Redirect all users to home page
+        return res.redirect('/');
     }
     
     res.render('auth/login', {
@@ -376,19 +365,20 @@ router.post('/login-email', async (req, res) => {
         
         console.log('[LOGIN-EMAIL] Checking email:', normalizedEmail);
         
-        // Query using LEFT JOINs to check for passwords in correct tables (per ERD)
-        // Per ERD: Participants → volunteerdetails.password, Admins → adminrole.password
+        // Query using LEFT JOINs to check for passwords in correct tables
         const user = await knexInstance('people as p')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
             .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
             .where('p.email', normalizedEmail)
             .select(
                 'p.personid',
                 'p.email',
+                'pd.password as participantpassword',
                 'vd.password as volunteerpassword'
             )
             .first();
 
-        // Also check adminrole (per ERD) - try adminrole first, fallback to admindetails
+        // Also check adminrole, fallback to admindetails
         let adminPassword = null;
         if (user) {
             try {
@@ -419,7 +409,9 @@ router.post('/login-email', async (req, res) => {
         console.log('[LOGIN-EMAIL] User found, personid:', user.personid);
 
         // If user has NO password in correct tables (per ERD), redirect to create password
-        if (!adminPassword && !user.volunteerpassword) {
+        // Check participantdetails.password first, then volunteerdetails.password as fallback
+        const hasPassword = adminPassword || user.participantpassword || user.volunteerpassword;
+        if (!hasPassword) {
             console.log('[LOGIN-EMAIL] No password found, redirecting to create-password');
             return res.redirect(`/create-password/${user.personid}`);
         }
@@ -442,18 +434,20 @@ router.get('/login-password/:personid', async (req, res) => {
     const { personid } = req.params;
 
     try {
-        // Look up user with password check from correct tables (per ERD)
+        // Look up user with password check from correct tables
         const user = await knexInstance('people as p')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
             .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
             .where('p.personid', personid)
             .select(
                 'p.personid',
                 'p.email',
+                'pd.password as participantpassword',
                 'vd.password as volunteerpassword'
             )
             .first();
 
-        // Also check adminrole (per ERD)
+        // Also check adminrole
         let adminPassword = null;
         if (user) {
             try {
@@ -472,7 +466,7 @@ router.get('/login-password/:personid', async (req, res) => {
             }
         }
 
-        if (!user || (!adminPassword && !user.volunteerpassword)) {
+        if (!user || (!adminPassword && !user.participantpassword && !user.volunteerpassword)) {
             return res.redirect('/login');
         }
 
@@ -498,6 +492,7 @@ router.post('/login-password/:personid', async (req, res) => {
     try {
         // Look up user with password check from correct tables (per ERD)
         const user = await knexInstance('people as p')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
             .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
             .where('p.personid', personid)
             .select(
@@ -505,6 +500,7 @@ router.post('/login-password/:personid', async (req, res) => {
                 'p.email',
                 'p.firstname',
                 'p.lastname',
+                'pd.password as participantpassword',
                 'vd.password as volunteerpassword'
             )
             .first();
@@ -513,7 +509,7 @@ router.post('/login-password/:personid', async (req, res) => {
             return res.redirect('/login');
         }
 
-        // Also check adminrole (per ERD) - try adminrole first, fallback to admindetails
+        // Also check adminrole, fallback to admindetails
         let adminPassword = null;
         try {
             const adminCheck = await knexInstance('adminrole')
@@ -537,13 +533,12 @@ router.post('/login-password/:personid', async (req, res) => {
         if (adminPassword === password) {
             matchedRole = 'Admin';
             userRole = 'manager';
-        } else if (user.volunteerpassword === password) {
-            // Per ERD: Participants and Volunteers both use volunteerdetails.password
+        } else if (user.participantpassword === password || user.volunteerpassword === password) {
             // Check actual role from peopleroles to determine if Participant or Volunteer
             const roles = await knexInstance('peopleroles as pr')
                 .join('roles as r', 'pr.roleid', 'r.roleid')
                 .where('pr.personid', personid)
-                .select('r.rolename');
+                .select('r.rolename as rolename');
             
             const roleNames = roles.map(r => r.rolename.toLowerCase());
             if (roleNames.includes('participant')) {
@@ -562,7 +557,7 @@ router.post('/login-password/:personid', async (req, res) => {
         const userRoles = await knexInstance('peopleroles as pr')
             .join('roles as r', 'pr.roleid', 'r.roleid')
             .where('pr.personid', personid)
-            .select('r.rolename');
+            .select('r.rolename as rolename');
 
         const roleNames = userRoles.map(r => r.rolename).filter(Boolean);
 
@@ -575,15 +570,12 @@ router.post('/login-password/:personid', async (req, res) => {
             firstName: user.firstname,
             lastName: user.lastname,
             role: userRole,
-            roles: roleNames.map(r => r.toLowerCase())
+            roles: roleNames.map(r => r.toLowerCase()),
+            isAdmin: userRole === 'manager'
         };
 
-        // Redirect to dashboard (managers) or events (participants) or returnTo URL
-        let defaultRedirect = '/dashboard';
-        if (userRole !== 'manager') {
-            defaultRedirect = '/events';
-        }
-        const returnTo = req.session.returnTo || defaultRedirect;
+        // Redirect to home page or returnTo URL
+        const returnTo = req.session.returnTo || '/';
         delete req.session.returnTo;
         return res.redirect(returnTo);
     } catch (err) {
@@ -597,18 +589,20 @@ router.get('/create-password/:personid', async (req, res) => {
     const { personid } = req.params;
 
     try {
-        // Look up user with password check from correct tables (per ERD)
+        // Look up user with password check from correct tables
         const user = await knexInstance('people as p')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
             .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
             .where('p.personid', personid)
             .select(
                 'p.personid',
                 'p.email',
+                'pd.password as participantpassword',
                 'vd.password as volunteerpassword'
             )
             .first();
 
-        // Also check adminrole (per ERD) - try adminrole first, fallback to admindetails
+        // Also check adminrole, fallback to admindetails
         let adminPassword = null;
         try {
             const adminCheck = await knexInstance('adminrole')
@@ -630,7 +624,8 @@ router.get('/create-password/:personid', async (req, res) => {
         }
 
         // If password already exists in correct tables (per ERD), redirect to password entry
-        if (adminPassword || user.volunteerpassword) {
+        // Check ParticipantDetails.Password first, then VolunteerDetails.Password as fallback
+        if (adminPassword || user.participantpassword || user.volunteerpassword) {
             return res.redirect(`/login-password/${personid}`);
         }
 
@@ -675,12 +670,12 @@ router.post('/create-password/:personid', async (req, res) => {
 
         let roleToUse = null;
 
-        // If user has NO role → assign PARTICIPANT role (roleid 1)
+        // If user has NO role → assign PARTICIPANT role (roleid = 1)
         if (!existingRole) {
             await knexInstance('peopleroles')
                 .insert({
                     personid: personid,
-                    roleid: 1 // Participant
+                    roleid: 1
                 })
                 .onConflict(['personid', 'roleid'])
                 .ignore();
@@ -689,12 +684,12 @@ router.post('/create-password/:personid', async (req, res) => {
             roleToUse = existingRole;
         }
 
-        // Check if password already exists (check correct tables per ERD)
-        // Per ERD: Participants → volunteerdetails.password, Admins → adminrole.password
+        // Check if password already exists
         let adminCheck = null;
+        let participantCheck = null;
         let volunteerCheck = null;
         
-        // Try adminrole first (per ERD), fallback to admindetails if adminrole doesn't exist
+        // Try adminrole first, fallback to admindetails if adminrole doesn't exist
         try {
             adminCheck = await knexInstance('adminrole')
                 .where('personid', personid)
@@ -706,17 +701,21 @@ router.post('/create-password/:personid', async (req, res) => {
                 .first();
         }
         
+        participantCheck = await knexInstance('participantdetails')
+            .where('personid', personid)
+            .first();
+        
         volunteerCheck = await knexInstance('volunteerdetails')
             .where('personid', personid)
             .first();
 
-        if (adminCheck?.password || volunteerCheck?.password) {
+        if (adminCheck?.password || participantCheck?.password || volunteerCheck?.password) {
             return res.redirect(`/login-password/${personid}`);
         }
 
-        // Insert password in correct table based on role (per ERD)
+        // Insert password in correct table based on role
         if (roleToUse.roleid === 3) {
-            // Admin (roleid 3) → store in adminrole.password (per ERD)
+            // Admin (roleid = 3) → store in adminrole.password
             try {
                 const adminExists = await knexInstance('adminrole')
                     .where('personid', personid)
@@ -745,23 +744,19 @@ router.post('/create-password/:personid', async (req, res) => {
                         .insert({ personid: personid, password: password });
                 }
             }
-        } else {
-            // Participant or Volunteer → store in volunteerdetails.password (per ERD)
-            const volunteerExists = await knexInstance('volunteerdetails')
+        } else if (roleToUse.roleid === 1) {
+            // Participant (roleid = 1) → store in participantdetails.password
+            await knexInstance('participantdetails')
                 .where('personid', personid)
-                .first();
-
-            if (volunteerExists) {
-                await knexInstance('volunteerdetails')
-                    .where('personid', personid)
-                    .update({ password: password });
-            } else {
-                await knexInstance('volunteerdetails')
-                    .insert({ personid: personid, password: password });
-            }
+                .update({ password: password });
+        } else {
+            // Volunteer (roleid = 2) → store in volunteerdetails.password
+            await knexInstance('volunteerdetails')
+                .where('personid', personid)
+                .update({ password: password });
         }
 
-        console.log('[CREATE-PASSWORD] Password stored for personid:', personid, 'roleid:', roleToUse.roleid);
+        console.log('[CREATE-PASSWORD] Password stored for personid:', personid, 'RoleID:', roleToUse.RoleID);
 
         // Redirect to password entry page to log in
         return res.redirect(`/login-password/${personid}`);
@@ -901,8 +896,8 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                 registrations: []
             });
         } else {
-            // Participants are redirected to events page (no dashboard for participants)
-            res.redirect('/events');
+            // Participants are redirected to home page (no dashboard for participants)
+            res.redirect('/');
             return;
         }
         req.session.messages = [];
@@ -917,7 +912,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                 registrations: []
             });
         } else {
-            res.redirect('/events');
+            res.redirect('/');
         }
     }
 });
@@ -1783,10 +1778,161 @@ router.post('/admin/participants/delete/:personid', requireAuth, requireManager,
 // EVENT ROUTES (View: public/common users, CRUD: manager only)
 // ============================================================================
 
-router.get('/events', requireAuth, async (req, res) => {
+// GET /events/past - Past events page (requires login)
+router.get('/events/past', requireAuth, async (req, res) => {
+    try {
+        // Get past events only
+        const pastEvents = await knexInstance('eventoccurrences')
+            .select(
+                'eventoccurrenceid',
+                'eventname',
+                'eventdatetimestart',
+                'eventlocation'
+            )
+            .where('eventdatetimestart', '<', knexInstance.fn.now())
+            .orderBy('eventdatetimestart', 'desc');
+        
+        res.render('user/past-events', {
+            title: 'Past Events - Ella Rises',
+            description: 'View past Ella Rises events.',
+            user: req.session.user || null,
+            events: pastEvents || [],
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('[EVENTS-PAST] Error fetching past events:', error);
+        res.render('user/past-events', {
+            title: 'Past Events - Ella Rises',
+            description: 'View past Ella Rises events.',
+            user: req.session.user || null,
+            events: [],
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    }
+});
+
+// GET /events/register - Event registration page (requires login)
+router.get('/events/register', requireAuth, async (req, res) => {
+    try {
+        // Get future events only
+        const futureEvents = await knexInstance('eventoccurrences')
+            .select(
+                'eventoccurrenceid',
+                'eventname',
+                'eventdatetimestart',
+                'eventlocation'
+            )
+            .where('eventdatetimestart', '>', knexInstance.fn.now())
+            .orderBy('eventdatetimestart', 'asc');
+        
+        res.render('user/register-event', {
+            title: 'Register for Event - Ella Rises',
+            description: 'Register for upcoming Ella Rises events.',
+            user: req.session.user || null,
+            events: futureEvents || [],
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('[EVENTS-REGISTER] Error fetching events:', error);
+        res.render('user/register-event', {
+            title: 'Register for Event - Ella Rises',
+            description: 'Register for upcoming Ella Rises events.',
+            user: req.session.user || null,
+            events: [],
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    }
+});
+
+// POST /events/register/:eventoccurrenceid - Register for event (requires login)
+router.post('/events/register/:eventoccurrenceid', requireAuth, async (req, res) => {
+    const { eventoccurrenceid } = req.params;
+    const userId = req.session.user.personid || req.session.user.id;
+    
+    try {
+        // Validate user is logged in
+        if (!userId) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'You must be logged in to register for events.' 
+            }];
+            return res.redirect('/login');
+        }
+        
+        // Validate eventoccurrenceid
+        const eventOccurrenceId = parseInt(eventoccurrenceid);
+        if (isNaN(eventOccurrenceId) || eventOccurrenceId <= 0) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'Please select a valid event.' 
+            }];
+            return res.redirect('/events/register');
+        }
+        
+        // Validate event exists and is in the future
+        const eventOccurrence = await knexInstance('eventoccurrences')
+            .where('eventoccurrenceid', eventOccurrenceId)
+            .where('eventdatetimestart', '>', knexInstance.fn.now())
+            .first();
+        
+        if (!eventOccurrence) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'Selected event does not exist or has already passed. Please select a valid upcoming event.' 
+            }];
+            return res.redirect('/events/register');
+        }
+        
+        // Prevent duplicates
+        const existingRegistration = await knexInstance('eventregistrations')
+            .where('personid', userId)
+            .where('eventoccurrenceid', eventOccurrenceId)
+            .first();
+        
+        if (existingRegistration) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'You are already registered for this event.' 
+            }];
+            return res.redirect('/events/register');
+        }
+        
+        // Insert registration with NULL for registrationstatus
+        await knexInstance('eventregistrations')
+            .insert({
+                personid: userId,
+                eventoccurrenceid: eventOccurrenceId,
+                registrationstatus: null,
+                registrationattendedflag: 0,
+                registrationcheckintime: null,
+                registrationcreatedat: knexInstance.fn.now()
+            });
+        
+        console.log('[EVENTS-REGISTER] Registration created for personid:', userId, 'eventoccurrenceid:', eventOccurrenceId);
+        
+        req.session.messages = [{ 
+            type: 'success', 
+            text: 'Successfully registered for event!' 
+        }];
+        res.redirect('/events/register');
+    } catch (error) {
+        console.error('[EVENTS-REGISTER] Registration error:', error);
+        req.session.messages = [{ 
+            type: 'error', 
+            text: 'There was an error registering for the event. Please try again.' 
+        }];
+        res.redirect('/events/register');
+    }
+});
+
+
+// GET /events - Admin events management page (admin only)
+router.get('/events', requireAuth, requireManager, async (req, res) => {
     const user = req.session.user || null;
-    const isManager = user && user.role === 'manager';
-    const viewPath = isManager ? 'manager/events' : 'user/events';
     const userId = user ? (user.personid || user.id) : null;
     
     // Get filter from query parameter (future or past, default to future)
@@ -1812,14 +1958,6 @@ router.get('/events', requireAuth, async (req, res) => {
             query = query.where('eo.EventDateTimeStart', '>=', now);
         } else if (filter === 'past') {
             query = query.where('eo.EventDateTimeStart', '<', now);
-            
-            // For non-manager users, only show events they attended
-            if (!isManager && userId) {
-                query = query
-                    .join('EventRegistrations as er', 'er.EventOccurrenceID', 'eo.EventOccurrenceID')
-                    .where('er.PersonID', userId)
-                    .where('er.RegistrationAttendedFlag', 1);
-            }
         }
         
         const occurrences = await query
@@ -1850,7 +1988,7 @@ router.get('/events', requireAuth, async (req, res) => {
             };
         }));
         
-        res.render(viewPath, {
+        res.render('manager/events', {
             title: 'Events - Ella Rises',
             user: user,
             events: eventsWithCounts || [],
@@ -1860,7 +1998,7 @@ router.get('/events', requireAuth, async (req, res) => {
         req.session.messages = [];
     } catch (error) {
         console.error('Error fetching events:', error);
-        res.render(viewPath, {
+        res.render('manager/events', {
             title: 'Events - Ella Rises',
             user: user,
             events: [],
@@ -2004,7 +2142,7 @@ router.get('/events/edit/:id', requireAuth, requireManager, async (req, res) => 
 
         if (!event) {
             req.session.messages = [{ type: 'error', text: 'Event not found.' }];
-            return res.redirect('/events');
+            return res.redirect('/dashboard');
         }
 
         res.render("manager/events-edit", {
@@ -2041,7 +2179,7 @@ router.post('/events/edit/:id', requireAuth, requireManager, async (req, res) =>
 
         if (!event) {
             req.session.messages = [{ type: 'error', text: 'Event not found.' }];
-            return res.redirect("/events");
+            return res.redirect("/dashboard");
         }
 
         const templateId = event.eventtemplateid || event.EventTemplateID;
@@ -2301,11 +2439,11 @@ router.post('/events/:id/delete', requireAuth, async (req, res) => {
             .del();
 
         req.session.messages = [{ type: 'success', text: 'Event deleted successfully' }];
-        res.redirect('/events');
+        res.redirect('/events?filter=future');
     } catch (error) {
         console.error('Error deleting event:', error);
         req.session.messages = [{ type: 'error', text: 'Error deleting event. Please try again.' }];
-        res.redirect('/events');
+        res.redirect('/events?filter=future');
     }
 });
 
