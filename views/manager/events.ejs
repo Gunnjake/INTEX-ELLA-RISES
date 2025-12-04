@@ -41,39 +41,38 @@
                         <td><%= event.EventType || event.event_type || 'N/A' %></td>
                         <td>
                             <% 
-                                const earliestDate = event.earliestDate || event.earliest_date;
-                                const latestDate = event.latestDate || event.latest_date;
-                                if (earliestDate) {
+                                const startDate = event.EventDateTimeStart || event.eventdatetimestart;
+                                const endDate = event.EventDateTimeEnd || event.eventdatetimeend;
+                                if (startDate) {
                                     try {
-                                        const startDate = new Date(earliestDate);
-                                        const formattedStart = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                        const start = new Date(startDate);
+                                        const formattedStart = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                                         
-                                        if (latestDate && latestDate !== earliestDate) {
-                                            const endDate = new Date(latestDate);
-                                            const formattedEnd = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                        if (endDate) {
+                                            const end = new Date(endDate);
+                                            const formattedEnd = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                             %>
                                 <%= formattedStart %> - <%= formattedEnd %>
                             <%      } else { %>
                                 <%= formattedStart %>
                             <%      }
                                 } catch(e) { %>
-                                <%= earliestDate %>
+                                <%= startDate %>
                             <%  }
                                 } else { %>
                                 TBA
                             <% } %>
-                            <% if (event.occurrenceCount > 1) { %>
-                                <br><small style="color: var(--text-secondary);">(<%= event.occurrenceCount %> occurrences)</small>
-                            <% } %>
                         </td>
-                        <td><%= event.location || event.EventLocation || event.eventlocation || 'TBA' %></td>
+                        <td><%= event.EventLocation || event.eventlocation || 'TBA' %></td>
                         <td><%= event.participantCount !== undefined ? event.participantCount : 0 %></td>
                         <td>
-                            <% if (event.isPast) { %>
-                                <button type="button" class="btn btn-sm btn-danger" disabled title="Past events cannot be deleted" aria-label="Delete event (disabled - past events cannot be deleted)" style="opacity: 0.5; cursor: not-allowed;">Delete</button>
-                            <% } else { %>
-                                <span style="color: var(--text-secondary); font-size: 0.9rem;">Future events can be managed individually</span>
-                            <% } %>
+                            <% 
+                                const eventId = event.EventOccurrenceID || event.eventoccurrenceid;
+                                const editUrl = (typeof filter !== 'undefined' && filter === 'past') 
+                                    ? '/events/past/edit/' + eventId 
+                                    : '/events/future/edit/' + eventId;
+                            %>
+                            <a href="<%= editUrl %>" class="btn btn-sm btn-primary">Edit</a>
                         </td>
                     </tr>
                 <% }); %>

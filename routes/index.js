@@ -1166,73 +1166,52 @@ router.get('/events', requireAuth, async (req, res) => {
     const filter = req.query.filter || 'future';
     
     try {
-        // Base query with joins - group by EventName
-        let query = knexInstance('EventOccurrences')
-            .join('EventTemplate', 'EventOccurrences.EventTemplateID', 'EventTemplate.EventTemplateID')
+        // Query individual occurrences (not grouped) for manager view to enable editing
+        let query = knexInstance('EventOccurrences as eo')
+            .join('EventTemplate as et', 'eo.EventTemplateID', 'et.EventTemplateID')
             .select(
-                'EventOccurrences.EventName',
-                'EventTemplate.EventType',
-                knexInstance.raw('COUNT(DISTINCT EventOccurrences.EventOccurrenceID) as occurrence_count'),
-                knexInstance.raw('MIN(EventOccurrences.EventDateTimeStart) as earliest_date'),
-                knexInstance.raw('MAX(EventOccurrences.EventDateTimeStart) as latest_date'),
-                knexInstance.raw('array_agg(DISTINCT EventOccurrences.EventLocation) as locations')
+                'eo.EventOccurrenceID',
+                'eo.EventName',
+                'eo.EventLocation',
+                'eo.EventDateTimeStart',
+                'eo.EventDateTimeEnd',
+                'eo.EventCapacity',
+                'et.EventType'
             );
         
         // Apply time-based filter
         const now = knexInstance.fn.now();
         if (filter === 'future') {
-            query = query.where('EventOccurrences.EventDateTimeStart', '>=', now);
+            query = query.where('eo.EventDateTimeStart', '>=', now);
         } else if (filter === 'past') {
-            query = query.where('EventOccurrences.EventDateTimeStart', '<', now);
+            query = query.where('eo.EventDateTimeStart', '<', now);
         }
         
-        const groupedEvents = await query
-            .groupBy('EventOccurrences.EventName', 'EventTemplate.EventType')
-            .orderBy('EventOccurrences.EventName', 'asc');
+        const occurrences = await query
+            .orderBy('eo.EventDateTimeStart', filter === 'future' ? 'asc' : 'desc');
         
-        // Get total participant counts for each event name
-        const eventsWithCounts = await Promise.all(groupedEvents.map(async (event) => {
-            // Get all occurrences for this event name
-            let occurrenceQuery = knexInstance('EventOccurrences')
-                .where('EventOccurrences.EventName', event.EventName || event.eventname)
-                .select('EventOccurrences.EventOccurrenceID');
+        // Get participant counts for each occurrence
+        const eventsWithCounts = await Promise.all(occurrences.map(async (occurrence) => {
+            const occurrenceId = occurrence.EventOccurrenceID || occurrence.eventoccurrenceid;
             
-            if (filter === 'future') {
-                occurrenceQuery = occurrenceQuery.where('EventOccurrences.EventDateTimeStart', '>=', now);
-            } else if (filter === 'past') {
-                occurrenceQuery = occurrenceQuery.where('EventOccurrences.EventDateTimeStart', '<', now);
-            }
-            
-            const occurrences = await occurrenceQuery;
-            const occurrenceIds = occurrences.map(o => o.EventOccurrenceID || o.eventoccurrenceid);
-            
-            // Count total participants across all occurrences
+            // Count participants for this occurrence
             let totalParticipants = 0;
-            if (occurrenceIds.length > 0) {
-                const participantCount = await knexInstance('EventRegistrations')
-                    .whereIn('EventOccurrenceID', occurrenceIds)
-                    .count('RegistrationID as count')
-                    .first();
-                totalParticipants = participantCount ? (parseInt(participantCount.count) || 0) : 0;
-            }
-            
-            // Determine if event is past (check earliest date)
-            const earliestDate = event.earliest_date || event.earliest_date;
-            const isPast = earliestDate ? new Date(earliestDate) < new Date() : false;
-            
-            // Format locations array
-            const locations = Array.isArray(event.locations) ? event.locations.filter(l => l) : [];
-            const locationDisplay = locations.length > 0 ? locations.join(', ') : 'TBA';
+            const participantCount = await knexInstance('EventRegistrations')
+                .where('EventOccurrenceID', occurrenceId)
+                .count('RegistrationID as count')
+                .first();
+            totalParticipants = participantCount ? (parseInt(participantCount.count) || 0) : 0;
             
             return {
-                EventName: event.EventName || event.eventname,
-                EventType: event.EventType || event.event_type || 'N/A',
+                EventOccurrenceID: occurrenceId,
+                EventName: occurrence.EventName || occurrence.eventname,
+                EventType: occurrence.EventType || occurrence.eventtype || 'N/A',
+                EventLocation: occurrence.EventLocation || occurrence.eventlocation || 'TBA',
+                EventDateTimeStart: occurrence.EventDateTimeStart || occurrence.eventdatetimestart,
+                EventDateTimeEnd: occurrence.EventDateTimeEnd || occurrence.eventdatetimeend,
+                EventCapacity: occurrence.EventCapacity || occurrence.eventcapacity,
                 participantCount: totalParticipants,
-                occurrenceCount: parseInt(event.occurrence_count) || 1,
-                earliestDate: earliestDate,
-                latestDate: event.latest_date || event.latest_date,
-                location: locationDisplay,
-                isPast: isPast
+                isPast: filter === 'past'
             };
         }));
         
@@ -1430,8 +1409,10 @@ router.post('/events/edit/:id', requireAuth, requireManager, async (req, res) =>
             return res.redirect("/events");
         }
 
+        const templateId = event.eventtemplateid || event.EventTemplateID;
+
         await knexInstance("EventTemplate")
-            .where("EventTemplateID", event.EventTemplateID)
+            .where("EventTemplateID", templateId)
             .update({
                 EventType: eventtype || null,
                 EventDescription: eventdescription || null
@@ -1455,6 +1436,192 @@ router.post('/events/edit/:id', requireAuth, requireManager, async (req, res) =>
         console.error("Error updating event:", err);
         req.session.messages = [{ type: 'error', text: 'Error updating event: ' + err.message }];
         res.redirect("/events/edit/" + id);
+    }
+});
+
+// GET Route: Edit Future Event
+router.get('/events/future/edit/:id', requireAuth, requireManager, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const event = await knexInstance("EventOccurrences as eo")
+            .leftJoin("EventTemplate as et", "et.EventTemplateID", "eo.EventTemplateID")
+            .where("eo.EventOccurrenceID", id)
+            .select(
+                "eo.EventOccurrenceID as eventoccurrenceid",
+                "eo.EventName as eventname",
+                "eo.EventLocation as eventlocation",
+                "eo.EventDateTimeStart as eventdatetimestart",
+                "eo.EventDateTimeEnd as eventdatetimeend",
+                "eo.EventCapacity as eventcapacity",
+                "eo.EventRegistrationDeadline as eventregistrationdeadline",
+                "et.EventTemplateID as eventtemplateid",
+                "et.EventType as eventtype",
+                "et.EventDescription as eventdescription"
+            )
+            .first();
+
+        if (!event) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect("/events?filter=future");
+        }
+
+        res.render("manager/events-edit-future", {
+            title: "Edit Future Event",
+            event,
+            user: req.session.user
+        });
+
+    } catch (err) {
+        console.error("Error loading event:", err);
+        req.session.messages = [{ type: 'error', text: 'Error loading event: ' + err.message }];
+        res.redirect("/events?filter=future");
+    }
+});
+
+// GET Route: Edit Past Event
+router.get('/events/past/edit/:id', requireAuth, requireManager, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const event = await knexInstance("EventOccurrences as eo")
+            .leftJoin("EventTemplate as et", "et.EventTemplateID", "eo.EventTemplateID")
+            .where("eo.EventOccurrenceID", id)
+            .select(
+                "eo.EventOccurrenceID as eventoccurrenceid",
+                "eo.EventName as eventname",
+                "eo.EventLocation as eventlocation",
+                "eo.EventDateTimeStart as eventdatetimestart",
+                "eo.EventDateTimeEnd as eventdatetimeend",
+                "eo.EventCapacity as eventcapacity",
+                "eo.EventRegistrationDeadline as eventregistrationdeadline",
+                "et.EventTemplateID as eventtemplateid",
+                "et.EventType as eventtype",
+                "et.EventDescription as eventdescription"
+            )
+            .first();
+
+        if (!event) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect("/events?filter=past");
+        }
+
+        res.render("manager/events-edit-past", {
+            title: "Edit Past Event",
+            event,
+            user: req.session.user
+        });
+
+    } catch (err) {
+        console.error("Error loading event:", err);
+        req.session.messages = [{ type: 'error', text: 'Error loading event: ' + err.message }];
+        res.redirect("/events?filter=past");
+    }
+});
+
+// POST Route: Save Future Event Edit
+router.post('/events/future/edit/:id', requireAuth, requireManager, async (req, res) => {
+    const { id } = req.params;
+
+    const {
+        eventname,
+        eventtype,
+        eventdescription,
+        eventlocation,
+        eventstart,
+        eventend,
+        eventcapacity,
+        eventregistrationdeadline
+    } = req.body;
+
+    try {
+        const event = await knexInstance("EventOccurrences")
+            .where("EventOccurrenceID", id)
+            .first();
+
+        if (!event) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect("/events?filter=future");
+        }
+
+        const templateId = event.eventtemplateid || event.EventTemplateID;
+
+        await knexInstance("EventTemplate")
+            .where("EventTemplateID", templateId)
+            .update({
+                EventType: eventtype || null,
+                EventDescription: eventdescription || null
+            });
+
+        await knexInstance("EventOccurrences")
+            .where("EventOccurrenceID", id)
+            .update({
+                EventName: eventname,
+                EventLocation: eventlocation || null,
+                EventDateTimeStart: eventstart ? new Date(eventstart) : null,
+                EventDateTimeEnd: eventend ? new Date(eventend) : null,
+                EventCapacity: eventcapacity ? parseInt(eventcapacity) : null,
+                EventRegistrationDeadline: eventregistrationdeadline ? new Date(eventregistrationdeadline) : null
+            });
+
+        req.session.messages = [{ type: 'success', text: 'Future event updated successfully' }];
+        res.redirect("/events?filter=future");
+
+    } catch (err) {
+        console.error("Error editing future event:", err);
+        req.session.messages = [{ type: 'error', text: 'Error updating event: ' + err.message }];
+        res.redirect("/events/future/edit/" + id);
+    }
+});
+
+// POST Route: Save Past Event Edit
+router.post('/events/past/edit/:id', requireAuth, requireManager, async (req, res) => {
+    const { id } = req.params;
+
+    const {
+        eventname,
+        eventtype,
+        eventdescription,
+        eventlocation,
+        eventstart,
+        eventend
+    } = req.body;
+
+    try {
+        const event = await knexInstance("EventOccurrences")
+            .where("EventOccurrenceID", id)
+            .first();
+
+        if (!event) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect("/events?filter=past");
+        }
+
+        const templateId = event.eventtemplateid || event.EventTemplateID;
+
+        await knexInstance("EventTemplate")
+            .where("EventTemplateID", templateId)
+            .update({
+                EventType: eventtype || null,
+                EventDescription: eventdescription || null
+            });
+
+        await knexInstance("EventOccurrences")
+            .where("EventOccurrenceID", id)
+            .update({
+                EventName: eventname,
+                EventLocation: eventlocation || null,
+                EventDateTimeStart: eventstart ? new Date(eventstart) : null,
+                EventDateTimeEnd: eventend ? new Date(eventend) : null
+            });
+
+        req.session.messages = [{ type: 'success', text: 'Past event updated successfully' }];
+        res.redirect("/events?filter=past");
+
+    } catch (err) {
+        console.error("Error editing past event:", err);
+        req.session.messages = [{ type: 'error', text: 'Error updating event: ' + err.message }];
+        res.redirect("/events/past/edit/" + id);
     }
 });
 
