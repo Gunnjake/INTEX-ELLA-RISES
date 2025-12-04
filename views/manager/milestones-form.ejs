@@ -1,61 +1,128 @@
-<%- include('../partials/header', { title: (typeof milestoneData !== 'undefined' && milestoneData.id) ? 'Edit Milestone' : 'Add New Milestone', user: typeof user !== 'undefined' ? user : null }) %>
+<%- include('../partials/header', { title: (milestoneData && milestoneData.id) ? 'Edit Milestone' : 'Add New Milestone', user: user || null }) %>
 
 <div class="page-header">
-    <h1><%= (typeof milestoneData !== 'undefined' && milestoneData.id) ? 'Edit Milestone' : 'Add New Milestone' %></h1>
-    <p><%= (typeof milestoneData !== 'undefined' && milestoneData.id) ? 'Update milestone information' : 'Create a new milestone and assign to participant' %></p>
+    <h1><%= (milestoneData && milestoneData.id) ? 'Edit Milestone' : 'Add New Milestone' %></h1>
+    <p><%= (milestoneData && milestoneData.id) ? 'Update milestone information' : 'Create a new milestone and assign to participant' %></p>
 </div>
 
 <div class="form-container">
-    <form action="<%= (typeof milestoneData !== 'undefined' && milestoneData.id) ? '/milestones/' + milestoneData.id + '/update' : '/milestones/new' %>" method="POST">
+    <form action="<%= (milestoneData && milestoneData.id) ? '/milestones/' + milestoneData.id + '/update' : '/milestones/new' %>" method="POST">
         <div class="form-group">
             <label for="milestone_name">Milestone Name *</label>
-            <input type="text" id="milestone_name" name="milestone_name" value="<%= typeof milestoneData !== 'undefined' ? (milestoneData.milestone_name || '') : '' %>" required>
+            <input type="text" id="milestone_name" name="milestone_name" value="<%= milestoneData ? (milestoneData.milestone_name || '') : '' %>" required>
         </div>
         <div class="form-group">
             <label for="milestone_type">Milestone Type *</label>
             <select id="milestone_type" name="milestone_type" required>
                 <option value="">Select milestone type</option>
-                <option value="education" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'education') ? 'selected' : '' %>>Education</option>
-                <option value="career" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'career') ? 'selected' : '' %>>Career</option>
-                <option value="personal" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'personal') ? 'selected' : '' %>>Personal Development</option>
-                <option value="steam_graduation" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'steam_graduation') ? 'selected' : '' %>>STEAM Field Graduation</option>
-                <option value="steam_job" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'steam_job') ? 'selected' : '' %>>STEAM Field Job</option>
-                <option value="other" <%= (typeof milestoneData !== 'undefined' && milestoneData.milestone_type === 'other') ? 'selected' : '' %>>Other</option>
+                <option value="education" <%= (milestoneData && milestoneData.milestone_type === 'education') ? 'selected' : '' %>>Education</option>
+                <option value="career" <%= (milestoneData && milestoneData.milestone_type === 'career') ? 'selected' : '' %>>Career</option>
+                <option value="personal" <%= (milestoneData && milestoneData.milestone_type === 'personal') ? 'selected' : '' %>>Personal Development</option>
+                <option value="steam_graduation" <%= (milestoneData && milestoneData.milestone_type === 'steam_graduation') ? 'selected' : '' %>>STEAM Field Graduation</option>
+                <option value="steam_job" <%= (milestoneData && milestoneData.milestone_type === 'steam_job') ? 'selected' : '' %>>STEAM Field Job</option>
+                <option value="other" <%= (milestoneData && milestoneData.milestone_type === 'other') ? 'selected' : '' %>>Other</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="participant_id">Participant *</label>
-            <select id="participant_id" name="participant_id" required>
-                <option value="">Select participant</option>
-                <% if (typeof participants !== 'undefined' && participants.length > 0) { %>
-                    <% participants.forEach(function(participant) { %>
-                        <option value="<%= participant.ParticipantID %>" 
-                            <%= (typeof milestoneData !== 'undefined' && milestoneData.ParticipantID == participant.ParticipantID) ? 'selected' : '' %>>
-                            <%= participant.ParticipantFirstName %> <%= participant.ParticipantLastName %>
-                        </option>
-                    <% }); %>
-                <% } %>
-            </select>
+            <label for="participant_search">Participant *</label>
+            <input type="text" id="participant_search" name="participant_search" placeholder="Search participant by name or email..." autocomplete="off" required>
+            <input type="hidden" id="participant_id" name="participant_id" value="<%= milestoneData ? (milestoneData.ParticipantID || '') : '' %>" required>
+            <div id="participant-results" style="display: none; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 4px; margin-top: 0.5rem; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: absolute; z-index: 1000; width: 100%; max-width: 500px;"></div>
             <small style="color: var(--text-secondary); font-size: 0.85rem; display: block; margin-top: 0.25rem;">
-                Note: Multiple milestones can be assigned to the same participant (1-to-many relationship)
+                Type to search for a participant. Multiple milestones can be assigned to the same participant.
             </small>
         </div>
+        
+        <script>
+            const participants = <%- JSON.stringify(participants || []) %>;
+            const participantSearch = document.getElementById('participant_search');
+            const participantIdInput = document.getElementById('participant_id');
+            const resultsDiv = document.getElementById('participant-results');
+            
+            <% if (milestoneData && milestoneData.PersonID) { %>
+                // Set initial value if editing
+                const selectedParticipant = participants.find(p => (p.PersonID || p.personid) == <%= milestoneData.PersonID %>);
+                if (selectedParticipant) {
+                    participantSearch.value = (selectedParticipant.FirstName || selectedParticipant.firstname || '') + ' ' + (selectedParticipant.LastName || selectedParticipant.lastname || '');
+                }
+            <% } %>
+            
+            participantSearch.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                resultsDiv.innerHTML = '';
+                
+                if (searchTerm.length < 2) {
+                    resultsDiv.style.display = 'none';
+                    participantIdInput.value = '';
+                    return;
+                }
+                
+                const filtered = participants.filter(p => {
+                    const firstName = (p.FirstName || p.firstname || '').toLowerCase();
+                    const lastName = (p.LastName || p.lastname || '').toLowerCase();
+                    const fullName = (firstName + ' ' + lastName).trim();
+                    const email = (p.Email || p.email || '').toLowerCase();
+                    return fullName.includes(searchTerm) || email.includes(searchTerm);
+                });
+                
+                if (filtered.length === 0) {
+                    resultsDiv.innerHTML = '<div style="padding: 0.75rem; color: var(--text-secondary);">No participants found</div>';
+                    resultsDiv.style.display = 'block';
+                    return;
+                }
+                
+                filtered.forEach(participant => {
+                    const div = document.createElement('div');
+                    div.style.padding = '0.75rem';
+                    div.style.cursor = 'pointer';
+                    div.style.borderBottom = '1px solid var(--border-light)';
+                    const firstName = participant.FirstName || participant.firstname || '';
+                    const lastName = participant.LastName || participant.lastname || '';
+                    const email = participant.Email || participant.email || '';
+                    div.innerHTML = '<strong>' + firstName + ' ' + lastName + '</strong><br><small style="color: var(--text-secondary);">' + email + '</small>';
+                    
+                    div.addEventListener('click', function() {
+                        participantSearch.value = firstName + ' ' + lastName;
+                        participantIdInput.value = participant.PersonID || participant.personid || '';
+                        resultsDiv.style.display = 'none';
+                    });
+                    
+                    div.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = 'var(--pink-bg)';
+                    });
+                    div.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = 'white';
+                    });
+                    
+                    resultsDiv.appendChild(div);
+                });
+                
+                resultsDiv.style.display = 'block';
+            });
+            
+            // Hide results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!participantSearch.contains(e.target) && !resultsDiv.contains(e.target)) {
+                    resultsDiv.style.display = 'none';
+                }
+            });
+        </script>
         <div class="form-group">
             <label for="achievement_date">Achievement Date *</label>
-            <input type="date" id="achievement_date" name="achievement_date" value="<%= typeof milestoneData !== 'undefined' ? (milestoneData.achievement_date || '') : '' %>" required>
+            <input type="date" id="achievement_date" name="achievement_date" value="<%= milestoneData ? (milestoneData.achievement_date || '') : '' %>" required>
         </div>
         <div class="form-group">
             <label for="status">Status *</label>
             <select id="status" name="status" required>
                 <option value="">Select status</option>
-                <option value="achieved" <%= (typeof milestoneData !== 'undefined' && milestoneData.status === 'achieved') ? 'selected' : '' %>>Achieved</option>
-                <option value="in_progress" <%= (typeof milestoneData !== 'undefined' && milestoneData.status === 'in_progress') ? 'selected' : '' %>>In Progress</option>
-                <option value="pending" <%= (typeof milestoneData !== 'undefined' && milestoneData.status === 'pending') ? 'selected' : '' %>>Pending</option>
+                <option value="achieved" <%= (milestoneData && milestoneData.status === 'achieved') ? 'selected' : '' %>>Achieved</option>
+                <option value="in_progress" <%= (milestoneData && milestoneData.status === 'in_progress') ? 'selected' : '' %>>In Progress</option>
+                <option value="pending" <%= (milestoneData && milestoneData.status === 'pending') ? 'selected' : '' %>>Pending</option>
             </select>
         </div>
         <div class="form-group">
             <label for="description">Description</label>
-            <textarea id="description" name="description" rows="4"><%= typeof milestoneData !== 'undefined' ? (milestoneData.description || '') : '' %></textarea>
+            <textarea id="description" name="description" rows="4"><%= milestoneData ? (milestoneData.description || '') : '' %></textarea>
         </div>
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Save</button>

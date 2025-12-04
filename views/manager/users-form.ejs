@@ -1,30 +1,30 @@
-<%- include('../partials/header', { title: (typeof userData !== 'undefined' && userData.id) ? 'Edit User' : 'Add New User', user: typeof user !== 'undefined' ? user : null }) %>
+<%- include('../partials/header', { title: (userData && userData.id) ? 'Edit User' : 'Add New User', user: user || null }) %>
 
 <div class="page-header">
-    <h1><%= (typeof userData !== 'undefined' && userData.id) ? 'Edit User' : 'Add New User' %></h1>
-    <p><%= (typeof userData !== 'undefined' && userData.id) ? 'Update user information' : 'Create a new user account' %></p>
+    <h1><%= (userData && userData.id) ? 'Edit User' : 'Add New User' %></h1>
+    <p><%= (userData && userData.id) ? 'Update user information' : 'Create a new user account' %></p>
 </div>
 
 <div class="form-container">
-    <form action="<%= (typeof userData !== 'undefined' && userData.id) ? '/users/' + userData.id + '/update' : '/users/new' %>" method="POST">
+    <form action="<%= (userData && userData.id) ? '/users/' + userData.id + '/update' : '/users/new' %>" method="POST">
         <div class="form-group">
             <label for="username">Username *</label>
-            <input type="text" id="username" name="username" value="<%= typeof userData !== 'undefined' ? (userData.username || '') : '' %>" required>
+            <input type="text" id="username" name="username" value="<%= userData ? (userData.username || '') : '' %>" required>
         </div>
         <div class="form-group">
             <label for="email">Email *</label>
-            <input type="email" id="email" name="email" value="<%= typeof userData !== 'undefined' ? (userData.email || '') : '' %>" required>
+            <input type="email" id="email" name="email" value="<%= userData ? (userData.email || '') : '' %>" required>
         </div>
         <div class="form-group">
-            <label for="password"><%= (typeof userData !== 'undefined' && userData.id) ? 'New Password (leave blank to keep current)' : 'Password *' %></label>
-            <input type="password" id="password" name="password" <%= (typeof userData === 'undefined' || !userData.id) ? 'required' : '' %>>
+            <label for="password"><%= (userData && userData.id) ? 'New Password (leave blank to keep current)' : 'Password *' %></label>
+            <input type="password" id="password" name="password" <%= (!userData || !userData.id) ? 'required' : '' %>>
         </div>
         <div class="form-group">
             <label for="role">Role *</label>
             <select id="role" name="role" required>
                 <option value="">Select role</option>
-                <option value="manager" <%= (typeof userData !== 'undefined' && userData.role === 'manager') ? 'selected' : '' %>>Manager</option>
-                <option value="user" <%= (typeof userData !== 'undefined' && userData.role === 'user') ? 'selected' : '' %>>Common User</option>
+                <option value="manager" <%= (userData && userData.role === 'manager') ? 'selected' : '' %>>Manager</option>
+                <option value="user" <%= (userData && userData.role === 'user') ? 'selected' : '' %>>Common User</option>
             </select>
         </div>
         <div class="form-actions">

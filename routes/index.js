@@ -1318,17 +1318,66 @@ router.get('/my-surveys', requireAuth, async (req, res) => {
         const userId = req.session.user.id;
         
         try {
-            const surveys = await knexInstance('Surveys')
-                .join('EventRegistrations', 'Surveys.RegistrationID', 'EventRegistrations.RegistrationID')
+            // Get events user attended that have survey templates
+            const registrations = await knexInstance('EventRegistrations')
                 .join('EventOccurrences', 'EventRegistrations.EventOccurrenceID', 'EventOccurrences.EventOccurrenceID')
+                .join('EventTemplate', 'EventOccurrences.EventTemplateID', 'EventTemplate.EventTemplateID')
                 .where({ 'EventRegistrations.PersonID': userId })
-                .select('Surveys.*', 'EventOccurrences.EventName as eventName')
-                .orderBy('Surveys.SurveySubmissionDate', 'desc');
+                .where('EventRegistrations.RegistrationAttendedFlag', 1)
+                .select(
+                    'EventOccurrences.EventOccurrenceID',
+                    'EventOccurrences.EventName',
+                    'EventOccurrences.EventDateTimeStart',
+                    'EventOccurrences.EventLocation',
+                    'EventTemplate.EventDescription',
+                    'EventRegistrations.RegistrationID'
+                )
+                .orderBy('EventOccurrences.EventDateTimeStart', 'desc');
+            
+            // Check which events have surveys already filled out
+            const completedSurveys = await knexInstance('Surveys')
+                .join('EventRegistrations', 'Surveys.RegistrationID', 'EventRegistrations.RegistrationID')
+                .where({ 'EventRegistrations.PersonID': userId })
+                .select('EventRegistrations.RegistrationID', 'Surveys.*');
+            
+            const completedRegistrationIds = new Set(
+                completedSurveys.map(s => s.RegistrationID || s.registrationid)
+            );
+            
+            // Extract survey questions from EventDescription
+            const eventsWithSurveys = registrations.map(reg => {
+                const desc = reg.EventDescription || reg.eventdescription || '';
+                const templateMatch = desc.match(/<!--SURVEY_TEMPLATE:(.+?)-->/);
+                let questions = [];
+                
+                if (templateMatch) {
+                    try {
+                        const templateData = JSON.parse(templateMatch[1]);
+                        questions = templateData.surveyQuestions || [];
+                    } catch (e) {
+                        console.error('Error parsing survey template:', e);
+                    }
+                }
+                
+                const hasCompleted = completedRegistrationIds.has(reg.RegistrationID || reg.registrationid);
+                
+                return {
+                    EventOccurrenceID: reg.EventOccurrenceID || reg.eventoccurrenceid,
+                    EventName: reg.EventName || reg.eventname,
+                    EventDateTimeStart: reg.EventDateTimeStart || reg.eventdatetimestart,
+                    EventLocation: reg.EventLocation || reg.eventlocation,
+                    RegistrationID: reg.RegistrationID || reg.registrationid,
+                    questions: questions,
+                    hasSurveyTemplate: questions.length > 0,
+                    hasCompleted: hasCompleted,
+                    completedSurvey: hasCompleted ? completedSurveys.find(s => (s.RegistrationID || s.registrationid) === (reg.RegistrationID || reg.registrationid)) : null
+                };
+            }).filter(e => e.hasSurveyTemplate); // Only show events with survey templates
             
             res.render('user/surveys', {
                 title: 'My Surveys - Ella Rises',
                 user: req.session.user,
-                surveys: surveys || [],
+                eventsWithSurveys: eventsWithSurveys || [],
                 messages: req.session.messages || []
             });
         } catch (dbError) {
@@ -1336,7 +1385,7 @@ router.get('/my-surveys', requireAuth, async (req, res) => {
             res.render('user/surveys', {
                 title: 'My Surveys - Ella Rises',
                 user: req.session.user,
-                surveys: [],
+                eventsWithSurveys: [],
                 messages: [{ type: 'info', text: 'Database not connected. Surveys will appear here once the database is set up.' }]
             });
         }
@@ -1346,7 +1395,7 @@ router.get('/my-surveys', requireAuth, async (req, res) => {
         res.render('user/surveys', {
             title: 'My Surveys - Ella Rises',
             user: req.session.user,
-            surveys: [],
+            eventsWithSurveys: [],
             messages: [{ type: 'info', text: 'Database not connected. Surveys will appear here once the database is set up.' }]
         });
     }
@@ -1427,71 +1476,285 @@ router.get('/surveys/new', requireAuth, async (req, res) => {
     if (req.session.user.role !== 'manager') {
         return res.status(403).send('Access denied.');
     }
-    // TODO: const participants = await db('participants').select('id', 'first_name', 'last_name');
-    // TODO: const events = await db('events').select('id', 'event_name');
-    res.render('manager/surveys-form', {
-        title: 'Add New Survey - Ella Rises',
-        user: req.session.user,
-        surveyData: null,
-        participants: [],
-        events: []
-    });
+    
+    try {
+        // Fetch events that don't have surveys yet - ONLY these
+        // Get all event occurrences
+        const allEvents = await knexInstance('EventOccurrences')
+            .select(
+                'EventOccurrences.EventOccurrenceID',
+                'EventOccurrences.EventName',
+                'EventOccurrences.EventDateTimeStart',
+                'EventOccurrences.EventLocation'
+            )
+            .orderBy('EventOccurrences.EventDateTimeStart', 'desc');
+        
+        // Get events that already have surveys
+        const eventsWithSurveys = await knexInstance('Surveys')
+            .join('EventRegistrations', 'Surveys.RegistrationID', 'EventRegistrations.RegistrationID')
+            .select('EventRegistrations.EventOccurrenceID')
+            .distinct();
+        
+        const eventsWithSurveysIds = new Set(
+            eventsWithSurveys.map(e => e.EventOccurrenceID || e.eventoccurrenceid)
+        );
+        
+        // Only events without surveys
+        const eventsWithoutSurveys = [];
+        
+        allEvents.forEach(event => {
+            const eventId = event.EventOccurrenceID || event.eventoccurrenceid;
+            const eventName = event.EventName || event.eventname;
+            const eventDate = event.EventDateTimeStart || event.eventdatetimestart;
+            const eventLocation = event.EventLocation || event.eventlocation;
+            
+            if (!eventsWithSurveysIds.has(eventId)) {
+                const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString() : '';
+                const displayName = `${eventName}${formattedDate ? ' - ' + formattedDate : ''}${eventLocation ? ' (' + eventLocation + ')' : ''}`;
+                
+                eventsWithoutSurveys.push({
+                    EventOccurrenceID: eventId,
+                    displayName: displayName,
+                    EventName: eventName,
+                    EventDateTimeStart: eventDate,
+                    EventLocation: eventLocation
+                });
+            }
+        });
+        
+        res.render('manager/surveys-form', {
+            title: 'Create Survey Template - Ella Rises',
+            user: req.session.user,
+            surveyData: null,
+            events: eventsWithoutSurveys || []
+        });
+    } catch (error) {
+        console.error('Error fetching data for survey form:', error);
+        res.render('manager/surveys-form', {
+            title: 'Create Survey Template - Ella Rises',
+            user: req.session.user,
+            surveyData: null,
+            events: []
+        });
+    }
 });
 
 router.post('/surveys/new', requireAuth, async (req, res) => {
     if (req.session.user.role !== 'manager') {
         return res.status(403).send('Access denied.');
     }
-    const { participant_id, event_id, satisfaction_score, usefulness_score, recommendation_score, comments, survey_date } = req.body;
+    const { event_id, questions } = req.body;
     
     // Validate required fields
-    if (!participant_id || !event_id || !satisfaction_score || !usefulness_score || !recommendation_score) {
-        req.session.messages = [{ type: 'error', text: 'Participant, event, and all scores are required.' }];
+    if (!event_id || !questions || !Array.isArray(questions) || questions.length === 0) {
+        req.session.messages = [{ type: 'error', text: 'Event and at least one question are required.' }];
+        return res.redirect('/surveys/new');
+    }
+    
+    // Filter out empty questions
+    const validQuestions = questions.filter(q => q && q.trim() !== '');
+    
+    if (validQuestions.length === 0) {
+        req.session.messages = [{ type: 'error', text: 'At least one valid question is required.' }];
         return res.redirect('/surveys/new');
     }
     
     try {
-        // Step 1: Check if EventRegistration exists, create if not
-        let registration = await knexInstance('EventRegistrations')
-            .where('PersonID', participant_id)
+        // Store survey template questions as JSON in EventTemplate or create a survey template record
+        // For now, we'll store it in EventOccurrences metadata or create a simple mapping
+        // Since we don't have a SurveyTemplates table, we'll store questions in the first survey's comments
+        // as a template marker, or we can create a simple text file approach
+        
+        // Get the event occurrence
+        const eventOccurrence = await knexInstance('EventOccurrences')
             .where('EventOccurrenceID', event_id)
             .first();
         
-        if (!registration) {
-            // Create registration if it doesn't exist
-            const [newRegistration] = await knexInstance('EventRegistrations')
-                .insert({
-                    PersonID: participant_id,
-                    EventOccurrenceID: event_id,
-                    RegistrationStatus: 'Registered',
-                    RegistrationAttendedFlag: 1,
-                    RegistrationCreatedAt: new Date()
-                })
-                .returning('RegistrationID');
-            registration = newRegistration;
+        if (!eventOccurrence) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect('/surveys/new');
         }
         
-        const registrationId = registration.RegistrationID || registration.registrationid;
+        // Store questions as JSON - we'll use this when users fill out surveys
+        // For now, create a "template" survey with questions stored in comments as JSON
+        // In a real system, you'd have a SurveyTemplates table
         
-        // Step 2: Create Survey
-        const surveyDate = survey_date ? new Date(survey_date) : new Date();
-        await knexInstance('Surveys')
-            .insert({
-                RegistrationID: registrationId,
-                SurveySatisfactionScore: parseFloat(satisfaction_score),
-                SurveyUsefulnessScore: parseFloat(usefulness_score),
-                SurveyRecommendationScore: parseFloat(recommendation_score),
-                SurveyOverallScore: null,
-                SurveyComments: comments || null,
-                SurveySubmissionDate: surveyDate
-            });
+        // Create a survey template record (stored as JSON in comments field for now)
+        // This marks that a survey template exists for this event
+        const questionsJson = JSON.stringify(validQuestions);
         
-        req.session.messages = [{ type: 'success', text: 'Survey created successfully' }];
+        // Store in EventTemplate's EventDescription or create a marker
+        // Actually, let's store it in a way we can retrieve it later
+        // We'll create a special "template" survey with RegistrationID = -1 or use a different approach
+        
+        // For now, store questions in EventTemplate description as JSON
+        const eventTemplate = await knexInstance('EventTemplate')
+            .where('EventTemplateID', eventOccurrence.EventTemplateID || eventOccurrence.eventtemplateid)
+            .first();
+        
+        if (eventTemplate) {
+            // Store survey questions in EventDescription as JSON (append to existing description)
+            const existingDesc = eventTemplate.EventDescription || '';
+            const surveyTemplateData = {
+                surveyQuestions: validQuestions,
+                createdAt: new Date().toISOString()
+            };
+            
+            // Store in a way we can retrieve - append JSON to description
+            const surveyTemplateJson = '\n<!--SURVEY_TEMPLATE:' + JSON.stringify(surveyTemplateData) + '-->';
+            await knexInstance('EventTemplate')
+                .where('EventTemplateID', eventTemplate.EventTemplateID || eventTemplate.eventtemplateid)
+                .update({
+                    EventDescription: existingDesc + surveyTemplateJson
+                });
+        }
+        
+        req.session.messages = [{ type: 'success', text: 'Survey template created successfully. Users who attended this event can now fill it out.' }];
         res.redirect('/surveys');
     } catch (error) {
-        console.error('Error creating survey:', error);
-        req.session.messages = [{ type: 'error', text: 'Error creating survey: ' + error.message }];
+        console.error('Error creating survey template:', error);
+        req.session.messages = [{ type: 'error', text: 'Error creating survey template: ' + error.message }];
         res.redirect('/surveys/new');
+    }
+});
+
+// User route to fill out survey for an event
+router.get('/surveys/:eventId/fill', requireAuth, async (req, res) => {
+    const userId = req.session.user.id;
+    const { eventId } = req.params;
+    
+    try {
+        // Get event and check if user attended
+        const registration = await knexInstance('EventRegistrations')
+            .join('EventOccurrences', 'EventRegistrations.EventOccurrenceID', 'EventOccurrences.EventOccurrenceID')
+            .join('EventTemplate', 'EventOccurrences.EventTemplateID', 'EventTemplate.EventTemplateID')
+            .where('EventRegistrations.PersonID', userId)
+            .where('EventRegistrations.EventOccurrenceID', eventId)
+            .where('EventRegistrations.RegistrationAttendedFlag', 1)
+            .select(
+                'EventOccurrences.*',
+                'EventTemplate.EventDescription',
+                'EventRegistrations.RegistrationID'
+            )
+            .first();
+        
+        if (!registration) {
+            req.session.messages = [{ type: 'error', text: 'Event not found or you did not attend this event.' }];
+            return res.redirect('/my-surveys');
+        }
+        
+        // Check if already completed
+        const existingSurvey = await knexInstance('Surveys')
+            .where('RegistrationID', registration.RegistrationID || registration.registrationid)
+            .first();
+        
+        if (existingSurvey) {
+            req.session.messages = [{ type: 'info', text: 'You have already completed this survey.' }];
+            return res.redirect('/my-surveys');
+        }
+        
+        // Extract survey questions
+        const desc = registration.EventDescription || registration.eventdescription || '';
+        const templateMatch = desc.match(/<!--SURVEY_TEMPLATE:(.+?)-->/);
+        let questions = [];
+        
+        if (templateMatch) {
+            try {
+                const templateData = JSON.parse(templateMatch[1]);
+                questions = templateData.surveyQuestions || [];
+            } catch (e) {
+                console.error('Error parsing survey template:', e);
+            }
+        }
+        
+        if (questions.length === 0) {
+            req.session.messages = [{ type: 'error', text: 'Survey template not found for this event.' }];
+            return res.redirect('/my-surveys');
+        }
+        
+        res.render('user/fill-survey', {
+            title: 'Fill Out Survey - Ella Rises',
+            user: req.session.user,
+            event: {
+                EventOccurrenceID: registration.EventOccurrenceID || registration.eventoccurrenceid,
+                EventName: registration.EventName || registration.eventname,
+                EventLocation: registration.EventLocation || registration.eventlocation,
+                EventDateTimeStart: registration.EventDateTimeStart || registration.eventdatetimestart
+            },
+            questions: questions,
+            registrationId: registration.RegistrationID || registration.registrationid
+        });
+    } catch (error) {
+        console.error('Error loading survey form:', error);
+        req.session.messages = [{ type: 'error', text: 'Error loading survey form.' }];
+        res.redirect('/my-surveys');
+    }
+});
+
+// User route to submit survey
+router.post('/surveys/:eventId/submit', requireAuth, async (req, res) => {
+    const userId = req.session.user.id;
+    const { eventId } = req.params;
+    const { answers, comments } = req.body;
+    
+    try {
+        // Get registration
+        const registration = await knexInstance('EventRegistrations')
+            .where('PersonID', userId)
+            .where('EventOccurrenceID', eventId)
+            .where('RegistrationAttendedFlag', 1)
+            .first();
+        
+        if (!registration) {
+            req.session.messages = [{ type: 'error', text: 'Registration not found.' }];
+            return res.redirect('/my-surveys');
+        }
+        
+        // Check if already completed
+        const existingSurvey = await knexInstance('Surveys')
+            .where('RegistrationID', registration.RegistrationID || registration.registrationid)
+            .first();
+        
+        if (existingSurvey) {
+            req.session.messages = [{ type: 'error', text: 'You have already completed this survey.' }];
+            return res.redirect('/my-surveys');
+        }
+        
+        // Parse answers (they come as array)
+        const answerArray = Array.isArray(answers) ? answers : [answers];
+        const scores = answerArray.map(a => parseFloat(a) || 0).filter(s => s > 0);
+        
+        if (scores.length === 0) {
+            req.session.messages = [{ type: 'error', text: 'Please answer at least one question.' }];
+            return res.redirect(`/surveys/${eventId}/fill`);
+        }
+        
+        // Map answers to survey fields (first 3-5 questions map to standard fields)
+        const satisfactionScore = scores[0] || null;
+        const usefulnessScore = scores[1] || null;
+        const recommendationScore = scores[2] || null;
+        const instructorScore = scores[3] || null;
+        const overallScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+        
+        // Create survey
+        await knexInstance('Surveys')
+            .insert({
+                RegistrationID: registration.RegistrationID || registration.registrationid,
+                SurveySatisfactionScore: satisfactionScore,
+                SurveyUsefulnessScore: usefulnessScore,
+                SurveyInstructorScore: instructorScore,
+                SurveyRecommendationScore: recommendationScore,
+                SurveyOverallScore: overallScore,
+                SurveyComments: comments || null,
+                SurveySubmissionDate: new Date()
+            });
+        
+        req.session.messages = [{ type: 'success', text: 'Survey submitted successfully! Thank you for your feedback.' }];
+        res.redirect('/my-surveys');
+    } catch (error) {
+        console.error('Error submitting survey:', error);
+        req.session.messages = [{ type: 'error', text: 'Error submitting survey: ' + error.message }];
+        res.redirect(`/surveys/${eventId}/fill`);
     }
 });
 
@@ -1508,7 +1771,6 @@ router.get('/surveys/:id/edit', requireAuth, async (req, res) => {
             title: 'Edit Survey - Ella Rises',
             user: req.session.user,
             surveyData: null,
-            participants: [],
             events: []
         });
     } catch (error) {
@@ -1615,7 +1877,7 @@ router.get('/milestones/new', requireAuth, async (req, res) => {
             .join('PeopleRoles', 'People.PersonID', 'PeopleRoles.PersonID')
             .join('Roles', 'PeopleRoles.RoleID', 'Roles.RoleID')
             .where('Roles.RoleName', 'Participant')
-            .select('People.PersonID', 'People.FirstName', 'People.LastName')
+            .select('People.PersonID', 'People.FirstName', 'People.LastName', 'People.Email')
             .orderBy('People.LastName', 'asc');
         
         res.render('manager/milestones-form', {
@@ -1684,7 +1946,7 @@ router.get('/milestones/:id/edit', requireAuth, async (req, res) => {
             .join('PeopleRoles', 'People.PersonID', 'PeopleRoles.PersonID')
             .join('Roles', 'PeopleRoles.RoleID', 'Roles.RoleID')
             .where('Roles.RoleName', 'Participant')
-            .select('People.PersonID', 'People.FirstName', 'People.LastName')
+            .select('People.PersonID', 'People.FirstName', 'People.LastName', 'People.Email')
             .orderBy('People.LastName', 'asc');
         
         res.render('manager/milestones-form', {
