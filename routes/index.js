@@ -10,6 +10,20 @@ const knexConfig = require('../knexfile');
 const environment = process.env.NODE_ENV || 'development';
 const knexInstance = knex(knexConfig[environment]);
 
+// Date formatting helper function
+function formatDate(date) {
+    if (!date) return null;
+    return new Date(date).toISOString().slice(0, 10);
+}
+
+// API route to clear messages after they've been displayed
+router.post('/api/clear-messages', (req, res) => {
+    if (req.session && req.session.messages) {
+        req.session.messages = [];
+    }
+    res.status(200).send('OK');
+});
+
 
 // ============================================================================
 // PUBLIC ROUTES
@@ -388,96 +402,319 @@ router.post('/test-login-query', async (req, res) => {
 });
 
 // Login form submission - using COALESCE with LEFT JOINs
-router.post('/login', async (req, res) => {
-    const sEmail = req.body.username;
-    const sPassword = req.body.password;
+// POST /login-email - Email-first login step
+router.post('/login-email', async (req, res) => {
+    const email = req.body.email;
 
     try {
-        // Query using role detection based on which detail table has a password
-        const sql = `
-            SELECT
-                p.personid,
-                p.email,
-                p.firstname,
-                p.lastname,
-
-                CASE
-                    WHEN ad.password IS NOT NULL THEN 'Admin'
-                    WHEN vd.password IS NOT NULL THEN 'Volunteer'
-                    WHEN pd.password IS NOT NULL THEN 'Participant'
-                    ELSE 'Unknown'
-                END AS detectedRole,
-
-                COALESCE(ad.password, vd.password, pd.password) AS detectedPassword,
-
-                ad.adminrole,
-                ad.salary,
-                vd.volunteerrole,
-                pd.participantschooloremployer,
-                pd.participantfieldofinterest,
-                pd.newsletter
-
-            FROM people p
-            LEFT JOIN admindetails ad ON p.personid = ad.personid
-            LEFT JOIN volunteerdetails vd ON p.personid = vd.personid
-            LEFT JOIN participantdetails pd ON p.personid = pd.personid
-            WHERE p.email = ?
-            LIMIT 1
-        `;
-
-        const result = await knexInstance.raw(sql, [sEmail]);
-        const rows = result.rows || [];
-        const user = rows.length > 0 ? rows[0] : null;
+        // Query using LEFT JOINs to check for passwords in all detail tables
+        const user = await knexInstance('people as p')
+            .leftJoin('admindetails as ad', 'ad.personid', 'p.personid')
+            .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
+            .where('p.email', email)
+            .select(
+                'p.personid',
+                'p.email',
+                'ad.password as adminpassword',
+                'vd.password as volunteerpassword',
+                'pd.password as participantpassword'
+            )
+            .first();
 
         if (!user) {
-            return res.render("auth/login", { error_message: "Invalid email or password" });
+            return res.render("auth/login", { 
+                error_message: "Email not found.",
+                user: null,
+                messages: []
+            });
         }
 
-        // Check if password exists
-        if (!user.detectedpassword) {
-            return res.render("auth/login", { error_message: "Invalid email or password" });
+        // If user has NO password in any detail table, redirect to create password
+        if (!user.adminpassword && !user.volunteerpassword && !user.participantpassword) {
+            return res.redirect(`/create-password/${user.personid}`);
         }
 
-        // Direct string comparison (no bcrypt)
-        const match = user.detectedpassword === sPassword;
-        
-        if (!match) {
-            return res.render("auth/login", { error_message: "Invalid email or password" });
+        // User HAS a password → redirect to password entry
+        return res.redirect(`/login-password/${user.personid}`);
+    } catch (err) {
+        console.error("Login email error:", err);
+        return res.render("auth/login", { 
+            error_message: "System error during login",
+            user: null,
+            messages: []
+        });
+    }
+});
+
+// GET /login-password/:personid - Password entry screen
+router.get('/login-password/:personid', async (req, res) => {
+    const { personid } = req.params;
+
+    try {
+        // Look up user with password check from all detail tables
+        const user = await knexInstance('people as p')
+            .leftJoin('admindetails as ad', 'ad.personid', 'p.personid')
+            .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
+            .where('p.personid', personid)
+            .select(
+                'p.personid',
+                'p.email',
+                'ad.password as adminpassword',
+                'vd.password as volunteerpassword',
+                'pd.password as participantpassword'
+            )
+            .first();
+
+        if (!user || (!user.adminpassword && !user.volunteerpassword && !user.participantpassword)) {
+            return res.redirect('/login');
         }
 
-        // Build role-specific details object based on detected role
-        const roleDetails = {};
-        const detectedRole = user.detectedrole ? user.detectedrole.toLowerCase() : 'unknown';
-        
-        if (detectedRole === 'admin') {
-            roleDetails.AdminRole = user.adminrole;
-            roleDetails.Salary = user.salary;
-        } else if (detectedRole === 'volunteer') {
-            roleDetails.VolunteerRole = user.volunteerrole;
-        } else if (detectedRole === 'participant') {
-            roleDetails.ParticipantSchoolOrEmployer = user.participantschooloremployer;
-            roleDetails.ParticipantFieldOfInterest = user.participantfieldofinterest;
-            roleDetails.NewsLetter = user.newsletter;
+        res.render('auth/login-password', {
+            title: 'Enter Password - Ella Rises',
+            personid: personid,
+            email: user.email,
+            error_message: req.query.error || null,
+            user: null,
+            messages: []
+        });
+    } catch (err) {
+        console.error("Password page error:", err);
+        return res.redirect('/login');
+    }
+});
+
+// POST /login-password/:personid - Verify password and login
+router.post('/login-password/:personid', async (req, res) => {
+    const { personid } = req.params;
+    const password = req.body.password;
+
+    try {
+        // Look up user with password check from all detail tables
+        const user = await knexInstance('people as p')
+            .leftJoin('admindetails as ad', 'ad.personid', 'p.personid')
+            .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
+            .where('p.personid', personid)
+            .select(
+                'p.personid',
+                'p.email',
+                'p.firstname',
+                'p.lastname',
+                'ad.password as adminpassword',
+                'vd.password as volunteerpassword',
+                'pd.password as participantpassword'
+            )
+            .first();
+
+        if (!user) {
+            return res.redirect('/login');
         }
 
-        // Set session data
+        // Compare raw password and determine role
+        let matchedRole = null;
+        let userRole = null;
+
+        if (user.adminpassword === password) {
+            matchedRole = 'Admin';
+            userRole = 'manager';
+        } else if (user.volunteerpassword === password) {
+            matchedRole = 'Volunteer';
+            userRole = 'user';
+        } else if (user.participantpassword === password) {
+            matchedRole = 'Participant';
+            userRole = 'user';
+        }
+
+        if (!matchedRole) {
+            return res.redirect(`/login-password/${personid}?error=Invalid password`);
+        }
+
+        // Fetch all user roles from peopleroles for session
+        const userRoles = await knexInstance('peopleroles as pr')
+            .join('roles as r', 'pr.roleid', 'r.roleid')
+            .where('pr.personid', personid)
+            .select('r.rolename');
+
+        const roleNames = userRoles.map(r => r.rolename).filter(Boolean);
+
+        // Set session
         req.session.isLoggedIn = true;
         req.session.user = {
+            personid: user.personid,
             id: user.personid,
-            PersonID: user.personid,
-            username: user.email,
             email: user.email,
             firstName: user.firstname,
             lastName: user.lastname,
-            role: detectedRole === 'admin' ? 'manager' : 'user',
-            RoleName: user.detectedrole,
-            RoleDetails: roleDetails
+            role: userRole,
+            roles: roleNames.map(r => r.toLowerCase())
         };
 
-        return res.redirect("/");
+        // Redirect to dashboard or returnTo URL
+        const returnTo = req.session.returnTo || '/dashboard';
+        delete req.session.returnTo;
+        return res.redirect(returnTo);
     } catch (err) {
-        console.error("Login error:", err);
-        return res.render("auth/login", { error_message: "System error during login" });
+        console.error("Password verification error:", err);
+        return res.redirect(`/login-password/${personid}?error=System error`);
+    }
+});
+
+// GET /create-password/:personid - Password creation screen
+router.get('/create-password/:personid', async (req, res) => {
+    const { personid } = req.params;
+
+    try {
+        // Look up user with password check from all detail tables
+        const user = await knexInstance('people as p')
+            .leftJoin('admindetails as ad', 'ad.personid', 'p.personid')
+            .leftJoin('volunteerdetails as vd', 'vd.personid', 'p.personid')
+            .leftJoin('participantdetails as pd', 'pd.personid', 'p.personid')
+            .where('p.personid', personid)
+            .select(
+                'p.personid',
+                'p.email',
+                'ad.password as adminpassword',
+                'vd.password as volunteerpassword',
+                'pd.password as participantpassword'
+            )
+            .first();
+
+        if (!user) {
+            return res.redirect('/login');
+        }
+
+        // If password already exists in any detail table, redirect to password entry
+        if (user.adminpassword || user.volunteerpassword || user.participantpassword) {
+            return res.redirect(`/login-password/${personid}`);
+        }
+
+        res.render('auth/create-password', {
+            title: 'Create Password - Ella Rises',
+            personid: personid,
+            email: user.email,
+            error_message: req.query.error || null,
+            user: null,
+            messages: []
+        });
+    } catch (err) {
+        console.error("Create password page error:", err);
+        return res.redirect('/login');
+    }
+});
+
+// POST /create-password/:personid - Create password and login
+router.post('/create-password/:personid', async (req, res) => {
+    const { personid } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    try {
+        // Validate passwords match
+        if (password !== confirmPassword) {
+            return res.redirect(`/create-password/${personid}?error=Passwords do not match`);
+        }
+
+        // Validate password length (1-20 characters to match VARCHAR(20))
+        if (!password || password.length < 1) {
+            return res.redirect(`/create-password/${personid}?error=Password is required`);
+        }
+        if (password.length > 20) {
+            return res.redirect(`/create-password/${personid}?error=Password must be 20 characters or less`);
+        }
+
+        // Check if user has any role assigned
+        const existingRole = await knexInstance('peopleroles')
+            .where('personid', personid)
+            .first();
+
+        let roleToUse = null;
+
+        // If user has NO role → assign PARTICIPANT role (roleid 1)
+        if (!existingRole) {
+            await knexInstance('peopleroles')
+                .insert({
+                    personid: personid,
+                    roleid: 1 // Participant
+                })
+                .onConflict(['personid', 'roleid'])
+                .ignore();
+            roleToUse = { roleid: 1 };
+        } else {
+            roleToUse = existingRole;
+        }
+
+        // Check if password already exists
+        const adminCheck = await knexInstance('admindetails')
+            .where('personid', personid)
+            .first();
+        const volunteerCheck = await knexInstance('volunteerdetails')
+            .where('personid', personid)
+            .first();
+        const participantCheck = await knexInstance('participantdetails')
+            .where('personid', personid)
+            .first();
+
+        if (adminCheck?.password || volunteerCheck?.password || participantCheck?.password) {
+            return res.redirect(`/login-password/${personid}`);
+        }
+
+        // Insert password in correct table based on role
+        if (roleToUse.roleid === 3) {
+            // Admin (roleid 3)
+            const adminExists = await knexInstance('admindetails')
+                .where('personid', personid)
+                .first();
+
+            if (adminExists) {
+                await knexInstance('admindetails')
+                    .where('personid', personid)
+                    .update({ password: password });
+            } else {
+                await knexInstance('admindetails')
+                    .insert({ personid: personid, password: password });
+            }
+        } else if (roleToUse.roleid === 2) {
+            // Volunteer (roleid 2)
+            const volunteerExists = await knexInstance('volunteerdetails')
+                .where('personid', personid)
+                .first();
+
+            if (volunteerExists) {
+                await knexInstance('volunteerdetails')
+                    .where('personid', personid)
+                    .update({ password: password });
+            } else {
+                await knexInstance('volunteerdetails')
+                    .insert({ personid: personid, password: password });
+            }
+        } else {
+            // Default → Participant (roleid 1)
+            const participantExists = await knexInstance('participantdetails')
+                .where('personid', personid)
+                .first();
+
+            if (participantExists) {
+                await knexInstance('participantdetails')
+                    .where('personid', personid)
+                    .update({ password: password });
+            } else {
+                await knexInstance('participantdetails')
+                    .insert({
+                        personid: personid,
+                        password: password,
+                        participantschooloremployer: '',
+                        participantfieldofinterest: '',
+                        newsletter: false
+                    });
+            }
+        }
+
+        // Redirect to password entry page to log in
+        return res.redirect(`/login-password/${personid}`);
+    } catch (err) {
+        console.error("Create password error:", err);
+        return res.redirect(`/create-password/${personid}?error=System error`);
     }
 });
 
@@ -699,89 +936,40 @@ router.get('/newsletter', requireAuth, requireManager, async (req, res) => {
 
 router.get('/users', requireAuth, requireManager, async (req, res) => {
     try {
-        // Get search query parameter
-        const searchQuery = req.query.q || '';
-        
-        // Base query for people with roles
-        let peopleQuery = knexInstance('People')
-            .join('PeopleRoles', 'People.PersonID', 'PeopleRoles.PersonID')
-            .join('Roles', 'PeopleRoles.RoleID', 'Roles.RoleID')
-            .select(
-                'People.PersonID',
-                'People.Email',
-                'People.FirstName',
-                'People.LastName',
-                'People.PhoneNumber',
-                'People.City',
-                'People.State',
-                'Roles.RoleName'
-            )
-            .where(function() {
-                this.where('Roles.RoleName', 'Admin')
-                    .orWhere('Roles.RoleName', 'Volunteer');
-            })
-            .orderBy('People.LastName', 'asc');
-        
-        // Apply search filter if provided (case-insensitive)
-        if (searchQuery) {
-            peopleQuery = peopleQuery.where(function() {
-                this.whereRaw('People.FirstName ILIKE ?', [`%${searchQuery}%`])
-                    .orWhereRaw('People.LastName ILIKE ?', [`%${searchQuery}%`])
-                    .orWhereRaw('People.Email ILIKE ?', [`%${searchQuery}%`]);
-            });
-        }
-        
-        const peopleWithRoles = await peopleQuery;
-        
-        // Separate into admins and volunteers
-        // If a person has both roles, they appear in both tables
-        const admins = [];
-        const volunteers = [];
-        const adminPersonIds = new Set();
-        const volunteerPersonIds = new Set();
-        
-        peopleWithRoles.forEach(row => {
-            const personId = row.PersonID || row.personid;
-            const roleName = (row.RoleName || row.rolename || '').toLowerCase();
-            const personData = {
-                PersonID: row.PersonID,
-                Email: row.Email,
-                FirstName: row.FirstName,
-                LastName: row.LastName,
-                PhoneNumber: row.PhoneNumber,
-                City: row.City,
-                State: row.State
-            };
-            
-            if (roleName === 'admin' && !adminPersonIds.has(personId)) {
-                admins.push(personData);
-                adminPersonIds.add(personId);
-            }
-            
-            if (roleName === 'volunteer' && !volunteerPersonIds.has(personId)) {
-                volunteers.push(personData);
-                volunteerPersonIds.add(personId);
-            }
-        });
-        
+        // Get Admins
+        const admins = await knexInstance('People as p')
+            .join('PeopleRoles as pr', 'p.PersonID', 'pr.PersonID')
+            .join('Roles as r', 'pr.RoleID', 'r.RoleID')
+            .where('r.RoleName', 'Admin')
+            .select('p.PersonID as personid', 'p.FirstName as firstname', 'p.LastName as lastname', 'p.Email as email', 'p.PhoneNumber as phonenumber', 'p.City as city', 'p.State as state')
+            .orderBy('p.LastName', 'asc')
+            .orderBy('p.FirstName', 'asc');
+
+        // Get Volunteers
+        const volunteers = await knexInstance('People as p')
+            .join('PeopleRoles as pr', 'p.PersonID', 'pr.PersonID')
+            .join('Roles as r', 'pr.RoleID', 'r.RoleID')
+            .where('r.RoleName', 'Volunteer')
+            .select('p.PersonID as personid', 'p.FirstName as firstname', 'p.LastName as lastname', 'p.Email as email', 'p.PhoneNumber as phonenumber', 'p.City as city', 'p.State as state')
+            .orderBy('p.LastName', 'asc')
+            .orderBy('p.FirstName', 'asc');
+
         res.render('manager/users', {
-            title: 'User Maintenance - Ella Rises',
-            user: req.session.user,
+            title: 'User Maintenance',
+            user: req.session.user || null,
             admins: admins || [],
             volunteers: volunteers || [],
-            searchQuery: searchQuery,
             messages: req.session.messages || []
         });
         req.session.messages = [];
     } catch (error) {
         console.error('Error fetching users:', error);
         res.render('manager/users', {
-            title: 'User Maintenance - Ella Rises',
-            user: req.session.user,
+            title: 'User Maintenance',
+            user: req.session.user || null,
             admins: [],
             volunteers: [],
-            searchQuery: req.query.q || '',
-            messages: [{ type: 'info', text: 'Database not connected. Users will appear here once the database is set up.' }]
+            messages: [{ type: 'error', text: 'Error loading user maintenance data.' }]
         });
         req.session.messages = [];
     }
@@ -888,6 +1076,308 @@ router.post('/users/:id/update', requireAuth, requireManager, async (req, res) =
         console.error('Error updating user:', error);
         req.session.messages = [{ type: 'error', text: 'Error updating user. Please try again.' }];
         res.redirect(`/users/${id}/edit`);
+    }
+});
+
+// GET /users/search/admin - Search API for admins
+router.get('/users/search/admin', requireAuth, requireManager, async (req, res) => {
+    try {
+        const term = req.query.term || '';
+        
+        if (!term || term.trim().length === 0) {
+            return res.json([]);
+        }
+
+        const results = await knexInstance('People')
+            .whereRaw("LOWER(FirstName || ' ' || LastName || ' ' || Email) LIKE ?", [`%${term.toLowerCase()}%`])
+            .select('PersonID as personid', 'FirstName as firstname', 'LastName as lastname', 'Email as email')
+            .orderBy('LastName', 'asc')
+            .orderBy('FirstName', 'asc')
+            .limit(10);
+
+        const formatted = results.map(row => ({
+            personid: row.personid,
+            name: `${row.firstname || ''} ${row.lastname || ''}`.trim(),
+            email: row.email || ''
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('Error searching for admin:', error);
+        res.json([]);
+    }
+});
+
+// GET /users/search/volunteer - Search API for volunteers
+router.get('/users/search/volunteer', requireAuth, requireManager, async (req, res) => {
+    try {
+        const term = req.query.term || '';
+        
+        if (!term || term.trim().length === 0) {
+            return res.json([]);
+        }
+
+        const results = await knexInstance('People')
+            .whereRaw("LOWER(FirstName || ' ' || LastName || ' ' || Email) LIKE ?", [`%${term.toLowerCase()}%`])
+            .select('PersonID as personid', 'FirstName as firstname', 'LastName as lastname', 'Email as email')
+            .orderBy('LastName', 'asc')
+            .orderBy('FirstName', 'asc')
+            .limit(10);
+
+        const formatted = results.map(row => ({
+            personid: row.personid,
+            name: `${row.firstname || ''} ${row.lastname || ''}`.trim(),
+            email: row.email || ''
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('Error searching for volunteer:', error);
+        res.json([]);
+    }
+});
+
+// POST /users/add-admin - Add admin role
+router.post('/users/add-admin', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/users');
+        }
+
+        // Get Admin roleid
+        const adminRole = await knexInstance('Roles')
+            .where('RoleName', 'Admin')
+            .first();
+
+        if (!adminRole) {
+            req.session.messages = [{ type: 'error', text: 'Admin role not found in database.' }];
+            return res.redirect('/users');
+        }
+
+        // Insert with ON CONFLICT DO NOTHING
+        await knexInstance.raw(`
+            INSERT INTO "PeopleRoles" ("PersonID", "RoleID")
+            VALUES (?, ?)
+            ON CONFLICT DO NOTHING
+        `, [personid, adminRole.RoleID]);
+
+        req.session.messages = [{ type: 'success', text: 'Admin role added successfully.' }];
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Error adding admin role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error adding admin role: ' + error.message }];
+        res.redirect('/users');
+    }
+});
+
+// POST /users/add-volunteer - Add volunteer role
+router.post('/users/add-volunteer', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/users');
+        }
+
+        // Get Volunteer roleid
+        const volunteerRole = await knexInstance('Roles')
+            .where('RoleName', 'Volunteer')
+            .first();
+
+        if (!volunteerRole) {
+            req.session.messages = [{ type: 'error', text: 'Volunteer role not found in database.' }];
+            return res.redirect('/users');
+        }
+
+        // Insert with ON CONFLICT DO NOTHING
+        await knexInstance.raw(`
+            INSERT INTO "PeopleRoles" ("PersonID", "RoleID")
+            VALUES (?, ?)
+            ON CONFLICT DO NOTHING
+        `, [personid, volunteerRole.RoleID]);
+
+        req.session.messages = [{ type: 'success', text: 'Volunteer role added successfully.' }];
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Error adding volunteer role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error adding volunteer role: ' + error.message }];
+        res.redirect('/users');
+    }
+});
+
+// POST /users/remove-admin - Remove admin role
+router.post('/users/remove-admin', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/users');
+        }
+
+        // Delete the role assignment
+        await knexInstance('peopleroles')
+            .where({
+                personid: personid,
+                roleid: 3 // Admin
+            })
+            .del();
+
+        req.session.messages = [{ type: 'success', text: 'Admin role removed successfully.' }];
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Error removing admin role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error removing admin role: ' + error.message }];
+        res.redirect('/users');
+    }
+});
+
+// POST /users/remove-volunteer - Remove volunteer role
+router.post('/users/remove-volunteer', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/users');
+        }
+
+        // Delete the role assignment
+        await knexInstance('peopleroles')
+            .where({
+                personid: personid,
+                roleid: 2 // Volunteer
+            })
+            .del();
+
+        req.session.messages = [{ type: 'success', text: 'Volunteer role removed successfully.' }];
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Error removing volunteer role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error removing volunteer role: ' + error.message }];
+        res.redirect('/users');
+    }
+});
+
+// POST /users/add-admin-manual - Add admin manually via modal form
+router.post('/users/add-admin-manual', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { firstname, lastname, email, phonenumber, city, state, zip, country } = req.body;
+
+        if (!firstname || !lastname || !email) {
+            req.session.messages = [{ type: 'error', text: 'First name, last name, and email are required.' }];
+            return res.redirect('/users');
+        }
+
+        // 1. Check if person exists, create if not
+        let person = await knexInstance('people').where({ email }).first();
+
+        if (!person) {
+            const inserted = await knexInstance('people')
+                .insert({
+                    firstname,
+                    lastname,
+                    email,
+                    phonenumber,
+                    city,
+                    state,
+                    zip,
+                    country
+                })
+                .returning(['personid']);
+
+            person = inserted[0];
+        }
+
+        const personId = person.personid;
+
+        // 2. Always assign Participant role (roleid 1)
+        await knexInstance('peopleroles')
+            .insert({
+                personid: personId,
+                roleid: 1 // Participant
+            })
+            .onConflict(['personid', 'roleid'])
+            .ignore();
+
+        // 3. Assign Admin role (roleid 3)
+        await knexInstance('peopleroles')
+            .insert({
+                personid: personId,
+                roleid: 3 // Admin
+            })
+            .onConflict(['personid', 'roleid'])
+            .ignore();
+
+        req.session.messages = [{ type: 'success', text: 'Admin added successfully.' }];
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Error adding admin manually:', error);
+        req.session.messages = [{ type: 'error', text: 'Error adding admin: ' + error.message }];
+        res.redirect('/users');
+    }
+});
+
+// POST /users/add-volunteer-manual - Add volunteer manually via modal form
+router.post('/users/add-volunteer-manual', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { firstname, lastname, email, phonenumber, city, state, zip, country } = req.body;
+
+        if (!firstname || !lastname || !email) {
+            req.session.messages = [{ type: 'error', text: 'First name, last name, and email are required.' }];
+            return res.redirect('/users');
+        }
+
+        // 1. Check if person exists, create if not
+        let person = await knexInstance('people').where({ email }).first();
+
+        if (!person) {
+            const inserted = await knexInstance('people')
+                .insert({
+                    firstname,
+                    lastname,
+                    email,
+                    phonenumber,
+                    city,
+                    state,
+                    zip,
+                    country
+                })
+                .returning(['personid']);
+
+            person = inserted[0];
+        }
+
+        const personId = person.personid;
+
+        // 2. Always assign Participant role (roleid 1)
+        await knexInstance('peopleroles')
+            .insert({
+                personid: personId,
+                roleid: 1 // Participant
+            })
+            .onConflict(['personid', 'roleid'])
+            .ignore();
+
+        // 3. Assign Volunteer role (roleid 2)
+        await knexInstance('peopleroles')
+            .insert({
+                personid: personId,
+                roleid: 2 // Volunteer
+            })
+            .onConflict(['personid', 'roleid'])
+            .ignore();
+
+        req.session.messages = [{ type: 'success', text: 'Volunteer added successfully.' }];
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Error adding volunteer manually:', error);
+        req.session.messages = [{ type: 'error', text: 'Error adding volunteer: ' + error.message }];
+        res.redirect('/users');
     }
 });
 
@@ -998,23 +1488,14 @@ router.post('/participants/new', requireAuth, async (req, res) => {
         
         const personId = newPerson.PersonID || newPerson.personid;
         
-        // Step 2: Get Participant RoleID
-        const participantRole = await knexInstance('Roles')
-            .where('RoleName', 'Participant')
-            .first();
-        
-        if (!participantRole) {
-            throw new Error('Participant role not found in database');
-        }
-        
-        const roleId = participantRole.RoleID || participantRole.roleid;
-        
-        // Step 3: Insert into PeopleRoles
+        // Step 2: Insert into PeopleRoles with Participant role (roleid 1)
         await knexInstance('PeopleRoles')
             .insert({
                 PersonID: personId,
-                RoleID: roleId
-            });
+                RoleID: 1 // Participant
+            })
+            .onConflict(['PersonID', 'RoleID'])
+            .ignore();
         
         // Step 4: Insert into ParticipantDetails
         await knexInstance('ParticipantDetails')
@@ -1137,19 +1618,140 @@ router.post('/participants/edit/:id', requireAuth, requireManager, async (req, r
     }
 });
 
-router.post('/participants/:id/delete', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.post('/participants/:id/delete', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
+    
     try {
-        // TODO: await db('participants').where({ id }).del();
-        req.session.messages = [{ type: 'success', text: 'Participant deleted successfully' }];
-        res.redirect('/participants');
+        // Get all registration IDs for this person to delete surveys
+        const registrations = await knexInstance('eventregistrations')
+            .where('personid', id)
+            .select('registrationid');
+        
+        const registrationIds = registrations.map(r => r.registrationid);
+        
+        // Delete surveys tied to registrations
+        if (registrationIds.length > 0) {
+            await knexInstance('surveys')
+                .whereIn('registrationid', registrationIds)
+                .del();
+        }
+        
+        // Delete milestones
+        await knexInstance('milestones')
+            .where('personid', id)
+            .del();
+
+        // Delete event registrations
+        await knexInstance('eventregistrations')
+            .where('personid', id)
+            .del();
+
+        // Delete donations tied to this person
+        await knexInstance('donations')
+            .where('personid', id)
+            .del();
+
+        // Delete participant details
+        await knexInstance('participantdetails')
+            .where('personid', id)
+            .del();
+
+        // Delete volunteer details
+        await knexInstance('volunteerdetails')
+            .where('personid', id)
+            .del();
+
+        // Delete admin details
+        await knexInstance('admindetails')
+            .where('personid', id)
+            .del();
+
+        // Delete role assignments
+        await knexInstance('peopleroles')
+            .where('personid', id)
+            .del();
+
+        // Finally delete the person
+        await knexInstance('people')
+            .where('personid', id)
+            .del();
+
+        req.session.messages = [{ type: 'success', text: 'Participant deleted successfully.' }];
+        return res.redirect('/participants');
+
     } catch (error) {
-        console.error('Error deleting participant:', error);
-        req.session.messages = [{ type: 'error', text: 'Error deleting participant. Please try again.' }];
-        res.redirect('/participants');
+        console.error("Error deleting participant:", error);
+        req.session.messages = [{ type: 'error', text: 'Error deleting participant.' }];
+        return res.redirect('/participants');
+    }
+});
+
+// Admin route alias for consistency
+router.post('/admin/participants/delete/:personid', requireAuth, requireManager, async (req, res) => {
+    const { personid } = req.params;
+    
+    try {
+        // Get all registration IDs for this person to delete surveys
+        const registrations = await knexInstance('eventregistrations')
+            .where('personid', personid)
+            .select('registrationid');
+        
+        const registrationIds = registrations.map(r => r.registrationid);
+        
+        // Delete surveys tied to registrations
+        if (registrationIds.length > 0) {
+            await knexInstance('surveys')
+                .whereIn('registrationid', registrationIds)
+                .del();
+        }
+        
+        // Delete milestones
+        await knexInstance('milestones')
+            .where('personid', personid)
+            .del();
+
+        // Delete event registrations
+        await knexInstance('eventregistrations')
+            .where('personid', personid)
+            .del();
+
+        // Delete donations tied to this person
+        await knexInstance('donations')
+            .where('personid', personid)
+            .del();
+
+        // Delete participant details
+        await knexInstance('participantdetails')
+            .where('personid', personid)
+            .del();
+
+        // Delete volunteer details
+        await knexInstance('volunteerdetails')
+            .where('personid', personid)
+            .del();
+
+        // Delete admin details
+        await knexInstance('admindetails')
+            .where('personid', personid)
+            .del();
+
+        // Delete role assignments
+        await knexInstance('peopleroles')
+            .where('personid', personid)
+            .del();
+
+        // Finally delete the person
+        await knexInstance('people')
+            .where('personid', personid)
+            .del();
+
+        req.session.messages = [{ type: 'success', text: 'Participant deleted successfully.' }];
+        return res.redirect('/participants');
+
+    } catch (error) {
+        console.error("Error deleting participant:", error);
+        req.session.messages = [{ type: 'error', text: 'Error deleting participant.' }];
+        return res.redirect('/participants');
     }
 });
 
@@ -1161,6 +1763,7 @@ router.get('/events', requireAuth, async (req, res) => {
     const user = req.session.user || null;
     const isManager = user && user.role === 'manager';
     const viewPath = isManager ? 'manager/events' : 'user/events';
+    const userId = user ? (user.personid || user.id) : null;
     
     // Get filter from query parameter (future or past, default to future)
     const filter = req.query.filter || 'future';
@@ -1185,6 +1788,14 @@ router.get('/events', requireAuth, async (req, res) => {
             query = query.where('eo.EventDateTimeStart', '>=', now);
         } else if (filter === 'past') {
             query = query.where('eo.EventDateTimeStart', '<', now);
+            
+            // For non-manager users, only show events they attended
+            if (!isManager && userId) {
+                query = query
+                    .join('EventRegistrations as er', 'er.EventOccurrenceID', 'eo.EventOccurrenceID')
+                    .where('er.PersonID', userId)
+                    .where('er.RegistrationAttendedFlag', 1);
+            }
         }
         
         const occurrences = await query
@@ -1625,13 +2236,46 @@ router.post('/events/past/edit/:id', requireAuth, requireManager, async (req, re
     }
 });
 
+router.post('/admin/events/delete/:eventoccurrenceid', requireAuth, requireManager, async (req, res) => {
+    const { eventoccurrenceid } = req.params;
+    
+    try {
+        // Delete registrations first (foreign key constraint)
+        await knexInstance('eventregistrations')
+            .where('eventoccurrenceid', eventoccurrenceid)
+            .del();
+
+        // Delete event occurrence
+        await knexInstance('eventoccurrences')
+            .where('eventoccurrenceid', eventoccurrenceid)
+            .del();
+
+        req.session.messages = [{ type: 'success', text: 'Event deleted successfully.' }];
+        res.redirect('/events?filter=future');
+    } catch (err) {
+        console.error('Error deleting event:', err);
+        req.session.messages = [{ type: 'error', text: 'Error deleting event.' }];
+        res.redirect('/events?filter=future');
+    }
+});
+
+// Legacy route for backwards compatibility
 router.post('/events/:id/delete', requireAuth, async (req, res) => {
     if (req.session.user.role !== 'manager') {
         return res.status(403).send('Access denied.');
     }
     const { id } = req.params;
     try {
-        // TODO: await db('events').where({ id }).del();
+        // Delete registrations first
+        await knexInstance('eventregistrations')
+            .where('eventoccurrenceid', id)
+            .del();
+
+        // Delete event occurrence
+        await knexInstance('eventoccurrences')
+            .where('eventoccurrenceid', id)
+            .del();
+
         req.session.messages = [{ type: 'success', text: 'Event deleted successfully' }];
         res.redirect('/events');
     } catch (error) {
@@ -1677,25 +2321,31 @@ router.get('/my-surveys', requireAuth, async (req, res) => {
                 completedSurveys.map(s => s.RegistrationID || s.registrationid)
             );
             
-            // Extract survey questions from EventDescription
-            const eventsWithSurveys = registrations.map(reg => {
-                const desc = reg.EventDescription || reg.eventdescription || '';
-                const templateMatch = desc.match(/<!--SURVEY_TEMPLATE:(.+?)-->/);
-                let questions = [];
-                
-                if (templateMatch) {
-                    try {
-                        const templateData = JSON.parse(templateMatch[1]);
-                        questions = templateData.surveyQuestions || [];
-                    } catch (e) {
-                        console.error('Error parsing survey template:', e);
-                    }
+            // Load survey questions from surveys table for each event occurrence
+            const eventOccurrenceIds = registrations.map(r => r.EventOccurrenceID || r.eventoccurrenceid);
+            const allSurveyQuestions = await knexInstance('surveys')
+                .whereIn('eventid', eventOccurrenceIds)
+                .select('eventid', 'question')
+                .orderBy('surveyid');
+            
+            // Group questions by eventid
+            const questionsByEventId = {};
+            allSurveyQuestions.forEach(q => {
+                const eventId = q.eventid;
+                if (!questionsByEventId[eventId]) {
+                    questionsByEventId[eventId] = [];
                 }
-                
+                questionsByEventId[eventId].push(q.question);
+            });
+            
+            // Map registrations to events with surveys
+            const eventsWithSurveys = registrations.map(reg => {
+                const eventOccurrenceId = reg.EventOccurrenceID || reg.eventoccurrenceid;
+                const questions = questionsByEventId[eventOccurrenceId] || [];
                 const hasCompleted = completedRegistrationIds.has(reg.RegistrationID || reg.registrationid);
                 
                 return {
-                    EventOccurrenceID: reg.EventOccurrenceID || reg.eventoccurrenceid,
+                    EventOccurrenceID: eventOccurrenceId,
                     EventName: reg.EventName || reg.eventname,
                     EventDateTimeStart: reg.EventDateTimeStart || reg.eventdatetimestart,
                     EventLocation: reg.EventLocation || reg.eventlocation,
@@ -1734,6 +2384,116 @@ router.get('/my-surveys', requireAuth, async (req, res) => {
     }
 });
 
+// GET Route: Survey Builder
+router.get('/surveys/builder', requireAuth, requireManager, async (req, res) => {
+    const { eventid } = req.query;
+
+    try {
+        // Load all events for dropdown
+        const events = await knexInstance("eventoccurrences")
+            .select("eventoccurrenceid", "eventname", "eventdatetimestart", "eventlocation")
+            .orderBy("eventdatetimestart", "desc");
+
+        let questions = [];
+        let selectedEvent = null;
+
+        if (eventid) {
+            selectedEvent = events.find(e => e.eventoccurrenceid == eventid);
+
+            // Load survey questions from surveys table where eventid = eventoccurrenceid
+            questions = await knexInstance("surveys")
+                .where("eventid", eventid)
+                .select("surveyid", "question")
+                .orderBy("surveyid");
+        }
+
+        res.render("manager/survey-builder", {
+            title: "Survey Builder",
+            user: req.session.user,
+            events,
+            selectedEvent,
+            questions
+        });
+
+    } catch (err) {
+        console.error("Error loading survey builder:", err);
+        req.session.messages = [{ type: 'error', text: 'Error loading survey builder: ' + err.message }];
+        res.redirect("/surveys");
+    }
+});
+
+// POST Route: Save Survey Builder
+router.post('/surveys/builder/save', requireAuth, requireManager, async (req, res) => {
+    const { eventid, existing_ids, existing_questions, delete_ids, new_questions } = req.body;
+
+    try {
+        if (!eventid) {
+            req.session.messages = [{ type: 'error', text: 'Event ID is required.' }];
+            return res.redirect("/surveys/builder");
+        }
+
+        // Verify event occurrence exists
+        const eventOccurrence = await knexInstance("eventoccurrences")
+            .where("eventoccurrenceid", eventid)
+            .first();
+
+        if (!eventOccurrence) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect("/surveys/builder");
+        }
+
+        // Delete selected questions
+        if (delete_ids) {
+            const idsToDelete = Array.isArray(delete_ids) ? delete_ids : [delete_ids];
+            await knexInstance("surveys")
+                .whereIn("surveyid", idsToDelete)
+                .where("eventid", eventid)
+                .del();
+        }
+
+        // Update existing questions
+        if (existing_ids && existing_questions) {
+            const ids = Array.isArray(existing_ids) ? existing_ids : [existing_ids];
+            const questions = Array.isArray(existing_questions) ? existing_questions : [existing_questions];
+
+            for (let i = 0; i < ids.length; i++) {
+                const surveyId = ids[i];
+                const questionText = questions[i]?.trim();
+                
+                // Skip temp IDs (they're new questions)
+                if (surveyId && !surveyId.toString().startsWith('temp_') && questionText) {
+                    await knexInstance("surveys")
+                        .where("surveyid", surveyId)
+                        .where("eventid", eventid)
+                        .update({ question: questionText });
+                }
+            }
+        }
+
+        // Insert new questions
+        if (new_questions) {
+            const list = Array.isArray(new_questions) ? new_questions : [new_questions];
+            for (let q of list) {
+                const trimmed = q?.trim();
+                if (trimmed) {
+                    await knexInstance("surveys").insert({
+                        eventid: eventid, // eventid IS eventoccurrenceid
+                        question: trimmed
+                    });
+                }
+            }
+        }
+
+        req.session.messages = [{ type: 'success', text: 'Survey saved successfully.' }];
+        res.redirect(`/surveys/builder?eventid=${eventid}`);
+
+    } catch (err) {
+        console.error("Error saving survey:", err);
+        req.session.messages = [{ type: 'error', text: 'Error saving survey: ' + err.message }];
+        res.redirect("/surveys/builder");
+    }
+});
+
 router.get('/surveys', async (req, res) => {
     // Manager-only view - shows all surveys grouped by event name (ignoring dates)
     const user = req.session.user || null;
@@ -1749,42 +2509,32 @@ router.get('/surveys', async (req, res) => {
     }
     
     try {
-        // Group surveys by EventName (ignoring dates), aggregate dates
-        const surveyGroups = await knexInstance('Surveys')
-            .join('EventRegistrations', 'Surveys.RegistrationID', 'EventRegistrations.RegistrationID')
-            .join('EventOccurrences', 'EventRegistrations.EventOccurrenceID', 'EventOccurrences.EventOccurrenceID')
+        // Group surveys by EventTemplateID, aggregating across all EventOccurrences
+        // Join chain: Surveys → EventRegistrations → EventOccurrences → EventTemplate
+        const surveyGroups = await knexInstance('Surveys as s')
+            .join('EventRegistrations as er', 's.RegistrationID', 'er.RegistrationID')
+            .join('EventOccurrences as eo', 'er.EventOccurrenceID', 'eo.EventOccurrenceID')
+            .join('EventTemplate as et', 'eo.EventTemplateID', 'et.EventTemplateID')
             .select(
-                'EventOccurrences.EventName',
-                knexInstance.raw('COUNT(Surveys.SurveyID) as survey_count'),
-                knexInstance.raw('AVG(Surveys.SurveySatisfactionScore) as avg_satisfaction'),
-                knexInstance.raw('AVG(Surveys.SurveyUsefulnessScore) as avg_usefulness'),
-                knexInstance.raw('AVG(Surveys.SurveyRecommendationScore) as avg_recommendation'),
-                knexInstance.raw('AVG(Surveys.SurveyOverallScore) as avg_overall'),
-                knexInstance.raw("array_agg(DISTINCT EventOccurrences.EventDateTimeStart::text) as available_dates")
+                'et.EventName',
+                knexInstance.raw('COUNT(s.SurveyID) as survey_count'),
+                knexInstance.raw('AVG(s.SurveySatisfactionScore) as avg_satisfaction'),
+                knexInstance.raw('AVG(s.SurveyUsefulnessScore) as avg_usefulness'),
+                knexInstance.raw('AVG(s.SurveyRecommendationScore) as avg_recommendation'),
+                knexInstance.raw('AVG(s.SurveyOverallScore) as avg_overall')
             )
-            .groupBy('EventOccurrences.EventName')
-            .orderBy('EventOccurrences.EventName', 'asc');
+            .groupBy('et.EventTemplateID', 'et.EventName')
+            .orderBy('et.EventName', 'asc');
         
-        // Process dates array for each group - sort dates in JavaScript
-        const processedGroups = surveyGroups.map(group => {
-            let dates = Array.isArray(group.available_dates) ? group.available_dates : (group.available_dates ? [group.available_dates] : []);
-            // Sort dates descending (newest first)
-            dates = dates.sort((a, b) => {
-                const dateA = new Date(a);
-                const dateB = new Date(b);
-                return dateB - dateA; // Descending order
-            });
-            
-            return {
-                eventName: group.EventName || group.eventname,
-                survey_count: parseInt(group.survey_count) || 0,
-                avg_satisfaction: group.avg_satisfaction ? parseFloat(group.avg_satisfaction) : null,
-                avg_usefulness: group.avg_usefulness ? parseFloat(group.avg_usefulness) : null,
-                avg_recommendation: group.avg_recommendation ? parseFloat(group.avg_recommendation) : null,
-                avg_overall: group.avg_overall ? parseFloat(group.avg_overall) : null,
-                dates: dates
-            };
-        });
+        // Process groups into simple format
+        const processedGroups = surveyGroups.map(group => ({
+            eventName: group.EventName || group.eventname || 'N/A',
+            survey_count: parseInt(group.survey_count) || 0,
+            avg_satisfaction: group.avg_satisfaction ? parseFloat(group.avg_satisfaction) : null,
+            avg_usefulness: group.avg_usefulness ? parseFloat(group.avg_usefulness) : null,
+            avg_recommendation: group.avg_recommendation ? parseFloat(group.avg_recommendation) : null,
+            avg_overall: group.avg_overall ? parseFloat(group.avg_overall) : null
+        }));
         
         res.render('manager/surveys', {
             title: 'Post-Event Surveys - Ella Rises',
@@ -1805,148 +2555,106 @@ router.get('/surveys', async (req, res) => {
     }
 });
 
-router.get('/surveys/new', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
-    
+router.get('/surveys/new', requireAuth, requireManager, async (req, res) => {
     try {
-        // Fetch events that don't have surveys yet - ONLY these
-        // Get all event occurrences
-        const allEvents = await knexInstance('EventOccurrences')
+        // Get all event registrations with person and event info for dropdown
+        // Join chain: EventRegistrations → People → EventOccurrences → EventTemplate
+        const registrations = await knexInstance('EventRegistrations as er')
+            .join('People as p', 'er.PersonID', 'p.PersonID')
+            .join('EventOccurrences as eo', 'er.EventOccurrenceID', 'eo.EventOccurrenceID')
+            .join('EventTemplate as et', 'eo.EventTemplateID', 'et.EventTemplateID')
             .select(
-                'EventOccurrences.EventOccurrenceID',
-                'EventOccurrences.EventName',
-                'EventOccurrences.EventDateTimeStart',
-                'EventOccurrences.EventLocation'
+                'er.RegistrationID as registrationid',
+                'p.FirstName',
+                'p.LastName',
+                'et.EventName as eventname',
+                'eo.EventDateTimeStart'
             )
-            .orderBy('EventOccurrences.EventDateTimeStart', 'desc');
+            .orderBy('eo.EventDateTimeStart', 'desc')
+            .orderBy('p.LastName', 'asc');
         
-        // Get events that already have surveys
-        const eventsWithSurveys = await knexInstance('Surveys')
-            .join('EventRegistrations', 'Surveys.RegistrationID', 'EventRegistrations.RegistrationID')
-            .select('EventRegistrations.EventOccurrenceID')
-            .distinct();
-        
-        const eventsWithSurveysIds = new Set(
-            eventsWithSurveys.map(e => e.EventOccurrenceID || e.eventoccurrenceid)
-        );
-        
-        // Only events without surveys
-        const eventsWithoutSurveys = [];
-        
-        allEvents.forEach(event => {
-            const eventId = event.EventOccurrenceID || event.eventoccurrenceid;
-            const eventName = event.EventName || event.eventname;
-            const eventDate = event.EventDateTimeStart || event.eventdatetimestart;
-            const eventLocation = event.EventLocation || event.eventlocation;
+        // Format registrations for dropdown
+        const registrationOptions = registrations.map(reg => {
+            const personName = `${reg.FirstName || reg.firstname || ''} ${reg.LastName || reg.lastname || ''}`.trim();
+            const eventName = reg.eventname || reg.EventName || 'Event';
+            const eventDate = reg.EventDateTimeStart ? new Date(reg.EventDateTimeStart).toLocaleDateString() : '';
             
-            if (!eventsWithSurveysIds.has(eventId)) {
-                const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString() : '';
-                const displayName = `${eventName}${formattedDate ? ' - ' + formattedDate : ''}${eventLocation ? ' (' + eventLocation + ')' : ''}`;
-                
-                eventsWithoutSurveys.push({
-                    EventOccurrenceID: eventId,
-                    displayName: displayName,
-                    EventName: eventName,
-                    EventDateTimeStart: eventDate,
-                    EventLocation: eventLocation
-                });
-            }
+            return {
+                registrationid: reg.registrationid || reg.RegistrationID,
+                personname: personName,
+                eventname: eventName,
+                eventdate: eventDate
+            };
         });
         
         res.render('manager/surveys-form', {
-            title: 'Create Survey Template - Ella Rises',
-            user: req.session.user,
-            surveyData: null,
-            events: eventsWithoutSurveys || []
+            title: 'Add Survey',
+            user: req.session.user || null,
+            registrations: registrationOptions || [],
+            messages: req.session.messages || []
         });
+        req.session.messages = [];
     } catch (error) {
         console.error('Error fetching data for survey form:', error);
+        req.session.messages = [{ type: 'error', text: 'Error loading survey form.' }];
         res.render('manager/surveys-form', {
-            title: 'Create Survey Template - Ella Rises',
-            user: req.session.user,
-            surveyData: null,
-            events: []
+            title: 'Add Survey',
+            user: req.session.user || null,
+            registrations: [],
+            messages: req.session.messages || []
         });
+        req.session.messages = [];
     }
 });
 
-router.post('/surveys/new', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
-    const { event_id, questions } = req.body;
+router.post('/surveys/new', requireAuth, requireManager, async (req, res) => {
+    const { registrationid } = req.body;
     
     // Validate required fields
-    if (!event_id || !questions || !Array.isArray(questions) || questions.length === 0) {
-        req.session.messages = [{ type: 'error', text: 'Event and at least one question are required.' }];
-        return res.redirect('/surveys/new');
-    }
-    
-    // Filter out empty questions
-    const validQuestions = questions.filter(q => q && q.trim() !== '');
-    
-    if (validQuestions.length === 0) {
-        req.session.messages = [{ type: 'error', text: 'At least one valid question is required.' }];
+    if (!registrationid) {
+        req.session.messages = [{ type: 'error', text: 'Registration is required.' }];
         return res.redirect('/surveys/new');
     }
     
     try {
-        // Store survey template questions as JSON in EventTemplate or create a survey template record
-        // For now, we'll store it in EventOccurrences metadata or create a simple mapping
-        // Since we don't have a SurveyTemplates table, we'll store questions in the first survey's comments
-        // as a template marker, or we can create a simple text file approach
-        
-        // Get the event occurrence
-        const eventOccurrence = await knexInstance('EventOccurrences')
-            .where('EventOccurrenceID', event_id)
+        // Verify registration exists
+        const registration = await knexInstance('EventRegistrations')
+            .where('RegistrationID', registrationid)
             .first();
         
-        if (!eventOccurrence) {
-            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+        if (!registration) {
+            req.session.messages = [{ type: 'error', text: 'Registration not found.' }];
             return res.redirect('/surveys/new');
         }
         
-        // Store questions as JSON - we'll use this when users fill out surveys
-        // For now, create a "template" survey with questions stored in comments as JSON
-        // In a real system, you'd have a SurveyTemplates table
-        
-        // Create a survey template record (stored as JSON in comments field for now)
-        // This marks that a survey template exists for this event
-        const questionsJson = JSON.stringify(validQuestions);
-        
-        // Store in EventTemplate's EventDescription or create a marker
-        // Actually, let's store it in a way we can retrieve it later
-        // We'll create a special "template" survey with RegistrationID = -1 or use a different approach
-        
-        // For now, store questions in EventTemplate description as JSON
-        const eventTemplate = await knexInstance('EventTemplate')
-            .where('EventTemplateID', eventOccurrence.EventTemplateID || eventOccurrence.eventtemplateid)
+        // Check if survey already exists for this registration
+        const existingSurvey = await knexInstance('Surveys')
+            .where('RegistrationID', registrationid)
             .first();
         
-        if (eventTemplate) {
-            // Store survey questions in EventDescription as JSON (append to existing description)
-            const existingDesc = eventTemplate.EventDescription || '';
-            const surveyTemplateData = {
-                surveyQuestions: validQuestions,
-                createdAt: new Date().toISOString()
-            };
-            
-            // Store in a way we can retrieve - append JSON to description
-            const surveyTemplateJson = '\n<!--SURVEY_TEMPLATE:' + JSON.stringify(surveyTemplateData) + '-->';
-            await knexInstance('EventTemplate')
-                .where('EventTemplateID', eventTemplate.EventTemplateID || eventTemplate.eventtemplateid)
-                .update({
-                    EventDescription: existingDesc + surveyTemplateJson
-                });
+        if (existingSurvey) {
+            req.session.messages = [{ type: 'error', text: 'A survey already exists for this registration.' }];
+            return res.redirect('/surveys/new');
         }
         
-        req.session.messages = [{ type: 'success', text: 'Survey template created successfully. Users who attended this event can now fill it out.' }];
-        res.redirect('/surveys');
+        // Insert new survey with all null/default values
+        await knexInstance('Surveys').insert({
+            RegistrationID: registrationid,
+            SurveySatisfactionScore: null,
+            SurveyUsefulnessScore: null,
+            SurveyInstructorScore: null,
+            SurveyRecommendationScore: null,
+            SurveyOverallScore: null,
+            SurveyNPSBucket: null,
+            SurveyComments: null,
+            SurveySubmissionDate: new Date()
+        });
+        
+        req.session.messages = [{ type: 'success', text: 'Survey added successfully' }];
+        return res.redirect('/surveys');
     } catch (error) {
-        console.error('Error creating survey template:', error);
-        req.session.messages = [{ type: 'error', text: 'Error creating survey template: ' + error.message }];
+        console.error('Error creating survey:', error);
+        req.session.messages = [{ type: 'error', text: 'Error creating survey: ' + error.message }];
         res.redirect('/surveys/new');
     }
 });
@@ -1986,19 +2694,13 @@ router.get('/surveys/:eventId/fill', requireAuth, async (req, res) => {
             return res.redirect('/my-surveys');
         }
         
-        // Extract survey questions
-        const desc = registration.EventDescription || registration.eventdescription || '';
-        const templateMatch = desc.match(/<!--SURVEY_TEMPLATE:(.+?)-->/);
-        let questions = [];
+        // Load survey questions from surveys table where eventid = eventoccurrenceid
+        const questionsData = await knexInstance('surveys')
+            .where('eventid', eventId)
+            .select('question')
+            .orderBy('surveyid');
         
-        if (templateMatch) {
-            try {
-                const templateData = JSON.parse(templateMatch[1]);
-                questions = templateData.surveyQuestions || [];
-            } catch (e) {
-                console.error('Error parsing survey template:', e);
-            }
-        }
+        const questions = questionsData.map(q => q.question);
         
         if (questions.length === 0) {
             req.session.messages = [{ type: 'error', text: 'Survey template not found for this event.' }];
@@ -2091,44 +2793,14 @@ router.post('/surveys/:eventId/submit', requireAuth, async (req, res) => {
     }
 });
 
-router.get('/surveys/:id/edit', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
-    const { id } = req.params;
-    try {
-        // TODO: const surveyData = await db('surveys').where({ id }).first();
-        // TODO: const participants = await db('participants').select('id', 'first_name', 'last_name');
-        // TODO: const events = await db('events').select('id', 'event_name');
-        res.render('manager/surveys-form', {
-            title: 'Edit Survey - Ella Rises',
-            user: req.session.user,
-            surveyData: null,
-            events: []
-        });
-    } catch (error) {
-        console.error('Error fetching survey:', error);
-        req.session.messages = [{ type: 'error', text: 'Error loading survey data.' }];
-        res.redirect('/surveys');
-    }
-});
+// Edit survey routes removed - surveys are not editable after creation
+// router.get('/surveys/:id/edit', requireAuth, async (req, res) => {
+//     // Removed - no editing functionality
+// });
 
-router.post('/surveys/:id/update', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
-    const { id } = req.params;
-    const { participant_id, event_id, satisfaction_score, usefulness_score, recommendation_score, comments, survey_date } = req.body;
-    try {
-        // TODO: Update survey in database
-        req.session.messages = [{ type: 'success', text: 'Survey updated successfully' }];
-        res.redirect('/surveys');
-    } catch (error) {
-        console.error('Error updating survey:', error);
-        req.session.messages = [{ type: 'error', text: 'Error updating survey. Please try again.' }];
-        res.redirect(`/surveys/${id}/edit`);
-    }
-});
+// router.post('/surveys/:id/update', requireAuth, async (req, res) => {
+//     // Removed - no editing functionality
+// });
 
 router.post('/surveys/:id/delete', requireAuth, async (req, res) => {
     if (req.session.user.role !== 'manager') {
@@ -2656,25 +3328,30 @@ router.get('/donations', requireAuth, async (req, res) => {
     const viewPath = isManager ? 'manager/donations' : 'user/donations';
     
     try {
-        // Get donations - use People.Email (Donations table doesn't have DonorEmail column)
-        // Always use Donations.DonationDate for the date
-        const donations = await knexInstance('Donations')
-            .leftJoin('People', 'Donations.PersonID', 'People.PersonID')
+        // Get donations - use lowercase table names
+        const donations = await knexInstance('donations')
+            .leftJoin('people', 'donations.personid', 'people.personid')
             .select(
-                'Donations.DonationID',
-                'Donations.PersonID',
-                'Donations.DonationDate',
-                'Donations.DonationAmount',
-                'People.FirstName',
-                'People.LastName',
-                'People.Email'
+                'donations.donationid',
+                'donations.personid',
+                'donations.donationdate',
+                'donations.donationamount',
+                'people.firstname',
+                'people.lastname',
+                'people.email'
             )
-            .orderBy('Donations.DonationDate', 'desc');
+            .orderBy('donations.donationdate', 'desc');
+        
+        // Format dates using helper function
+        const formattedDonations = donations.map(d => ({
+            ...d,
+            formatted_date: formatDate(d.donationdate)
+        }));
         
         res.render(viewPath, {
             title: 'Donations - Ella Rises',
             user: user,
-            donations: donations || [],
+            donations: formattedDonations || [],
             messages: req.session.messages || []
         });
         req.session.messages = [];
@@ -2690,69 +3367,88 @@ router.get('/donations', requireAuth, async (req, res) => {
     }
 });
 
-router.get('/donations/new', requireAuth, (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.get('/donations/new', requireAuth, requireManager, (req, res) => {
     res.render('manager/donations-form', {
         title: 'Add New Donation - Ella Rises',
         user: req.session.user,
-        donationData: null
+        messages: req.session.messages || []
     });
+    req.session.messages = [];
 });
 
-router.post('/donations/new', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
-    const { donor_name, donor_email, donor_phone, amount, payment_method, donation_date, notes } = req.body;
-    
-    // Validate required fields
-    if (!donor_name || !donor_email || !amount || !donation_date) {
-        req.session.messages = [{ type: 'error', text: 'Donor name, email, amount, and donation date are required.' }];
-        return res.redirect('/donations/new');
-    }
-    
+// GET route for people search autocomplete
+router.get('/people/search', requireAuth, requireManager, async (req, res) => {
     try {
-        // Step 1: Check if Person exists by email, create if not
-        let person = await knexInstance('People')
-            .where('Email', donor_email)
-            .first();
-        
-        if (!person) {
-            // Create new person for donor
-            const nameParts = donor_name.trim().split(' ');
-            const firstName = nameParts[0] || '';
-            const lastName = nameParts.slice(1).join(' ') || '';
-            
-            const [newPerson] = await knexInstance('People')
-                .insert({
-                    FirstName: firstName,
-                    LastName: lastName,
-                    Email: donor_email,
-                    PhoneNumber: donor_phone || null
-                })
-                .returning('PersonID');
-            person = newPerson;
+        const q = req.query.q || '';
+
+        if (!q || q.trim().length === 0) {
+            return res.json([]);
         }
-        
-        const personId = person.PersonID || person.personid;
-        
-        // Step 2: Create Donation
-        const donationDate = new Date(donation_date);
-        await knexInstance('Donations')
-            .insert({
-                PersonID: personId,
-                DonationDate: donationDate,
-                DonationAmount: parseFloat(amount)
-            });
-        
-        req.session.messages = [{ type: 'success', text: 'Donation recorded successfully' }];
+
+        const results = await knexInstance('people')
+            .whereILike('firstname', `%${q}%`)
+            .orWhereILike('lastname', `%${q}%`)
+            .orWhereILike('email', `%${q}%`)
+            .select('personid', 'firstname', 'lastname', 'email')
+            .limit(10);
+
+        res.json(results);
+    } catch (err) {
+        console.error("Search error:", err);
+        res.json([]);
+    }
+});
+
+router.post('/donations/add', requireAuth, requireManager, async (req, res) => {
+    try {
+        const {
+            personid,
+            new_firstname,
+            new_lastname,
+            new_email,
+            new_phone,
+            new_city,
+            new_state,
+            new_zip,
+            new_country,
+            amount,
+            donationdate
+        } = req.body;
+
+        let finalPersonId = personid;
+
+        // If no existing person was selected, create a new one
+        if (!finalPersonId || finalPersonId === "") {
+            const inserted = await knexInstance('people')
+                .insert({
+                    firstname: new_firstname || '',
+                    lastname: new_lastname || '',
+                    email: new_email || '',
+                    phonenumber: new_phone || '',
+                    city: new_city || '',
+                    state: new_state || '',
+                    zip: new_zip || '',
+                    country: new_country || ''
+                })
+                .returning(['personid']);
+
+            finalPersonId = inserted[0].personid;
+        }
+
+        // Format date
+        const formattedDate = new Date(donationdate).toISOString().slice(0, 10);
+
+        // Insert donation (no email field)
+        await knexInstance('donations').insert({
+            personid: finalPersonId,
+            donationamount: amount,
+            donationdate: formattedDate
+        });
+
         res.redirect('/donations');
-    } catch (error) {
-        console.error('Error creating donation:', error);
-        req.session.messages = [{ type: 'error', text: 'Error recording donation: ' + error.message }];
-        res.redirect('/donations/new');
+    } catch (err) {
+        console.error("Error adding donation:", err);
+        res.redirect('/donations');
     }
 });
 
@@ -2760,16 +3456,16 @@ router.get('/donations/edit/:id', requireAuth, requireManager, async (req, res) 
     const { id } = req.params;
 
     try {
-        const donation = await knexInstance("Donations as d")
-            .leftJoin("People as p", "p.PersonID", "d.PersonID")
-            .where("d.DonationID", id)
+        const donation = await knexInstance("donations as d")
+            .leftJoin("people as p", "p.personid", "d.personid")
+            .where("d.donationid", id)
             .select(
-                "d.DonationID as donationid",
-                "d.DonationAmount as amount",
-                "d.DonationDate as donationdate",
-                "p.FirstName as firstname",
-                "p.LastName as lastname",
-                "p.Email as email"
+                "d.donationid",
+                "d.donationamount",
+                "d.donationdate",
+                "p.firstname",
+                "p.lastname",
+                "p.email"
             )
             .first();
 
@@ -2778,11 +3474,19 @@ router.get('/donations/edit/:id', requireAuth, requireManager, async (req, res) 
             return res.redirect('/donations');
         }
 
+        // Format date for the form
+        const formattedDonation = {
+            ...donation,
+            formatted_date: formatDate(donation.donationdate)
+        };
+
         res.render("manager/donations-edit", {
             title: "Edit Donation",
             user: req.session.user,
-            donation
+            donation: formattedDonation,
+            messages: req.session.messages || []
         });
+        req.session.messages = [];
 
     } catch (err) {
         console.error("Error loading donation:", err);
@@ -2800,14 +3504,17 @@ router.post('/donations/edit/:id', requireAuth, requireManager, async (req, res)
     } = req.body;
 
     try {
-        await knexInstance("Donations")
-            .where("DonationID", id)
+        // Ensure valid date format
+        const formattedDate = donationdate ? new Date(donationdate).toISOString().slice(0, 10) : null;
+
+        await knexInstance("donations")
+            .where("donationid", id)
             .update({
-                DonationAmount: amount ? parseFloat(amount) : null,
-                DonationDate: donationdate ? new Date(donationdate) : null
+                donationamount: amount ? parseFloat(amount) : null,
+                donationdate: formattedDate
             });
 
-        req.session.messages = [{ type: 'success', text: 'Donation updated successfully' }];
+        req.session.messages = [{ type: 'success', text: 'Donation updated successfully.' }];
         res.redirect("/donations");
 
     } catch (err) {
@@ -2817,19 +3524,264 @@ router.post('/donations/edit/:id', requireAuth, requireManager, async (req, res)
     }
 });
 
-router.post('/donations/:id/delete', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.post('/donations/:id/delete', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
     try {
-        // TODO: await db('donations').where({ id }).del();
-        req.session.messages = [{ type: 'success', text: 'Donation deleted successfully' }];
+        await knexInstance('donations')
+            .where('donationid', id)
+            .del();
+        req.session.messages = [{ type: 'success', text: 'Donation deleted successfully.' }];
         res.redirect('/donations');
     } catch (error) {
         console.error('Error deleting donation:', error);
-        req.session.messages = [{ type: 'error', text: 'Error deleting donation. Please try again.' }];
+        req.session.messages = [{ type: 'error', text: 'Error deleting donation: ' + error.message }];
         res.redirect('/donations');
+    }
+});
+
+// ============================================================================
+// USER MAINTENANCE DASHBOARD
+// ============================================================================
+
+// GET /user-maintenance - Main dashboard page
+router.get('/user-maintenance', requireAuth, requireManager, async (req, res) => {
+    try {
+        // Get Admins
+        const admins = await knexInstance('People as p')
+            .join('PeopleRoles as pr', 'p.PersonID', 'pr.PersonID')
+            .join('Roles as r', 'pr.RoleID', 'r.RoleID')
+            .where('r.RoleName', 'Admin')
+            .select('p.PersonID as personid', 'p.FirstName as firstname', 'p.LastName as lastname', 'p.Email as email')
+            .orderBy('p.LastName', 'asc')
+            .orderBy('p.FirstName', 'asc');
+
+        // Get Volunteers
+        const volunteers = await knexInstance('People as p')
+            .join('PeopleRoles as pr', 'p.PersonID', 'pr.PersonID')
+            .join('Roles as r', 'pr.RoleID', 'r.RoleID')
+            .where('r.RoleName', 'Volunteer')
+            .select('p.PersonID as personid', 'p.FirstName as firstname', 'p.LastName as lastname', 'p.Email as email')
+            .orderBy('p.LastName', 'asc')
+            .orderBy('p.FirstName', 'asc');
+
+        res.render('manager/user-maintenance', {
+            title: 'User Maintenance',
+            user: req.session.user || null,
+            admins: admins || [],
+            volunteers: volunteers || [],
+            messages: req.session.messages || []
+        });
+        req.session.messages = [];
+    } catch (error) {
+        console.error('Error fetching user maintenance data:', error);
+        res.render('manager/user-maintenance', {
+            title: 'User Maintenance',
+            user: req.session.user || null,
+            admins: [],
+            volunteers: [],
+            messages: [{ type: 'error', text: 'Error loading user maintenance data.' }]
+        });
+        req.session.messages = [];
+    }
+});
+
+// GET /user-maintenance/search/admin - Search API for admins
+router.get('/user-maintenance/search/admin', requireAuth, requireManager, async (req, res) => {
+    try {
+        const term = req.query.term || '';
+        
+        if (!term || term.trim().length === 0) {
+            return res.json([]);
+        }
+
+        const results = await knexInstance('People')
+            .whereRaw("LOWER(FirstName || ' ' || LastName) LIKE ?", [`%${term.toLowerCase()}%`])
+            .select('PersonID as personid', 'FirstName as firstname', 'LastName as lastname', 'Email as email')
+            .orderBy('LastName', 'asc')
+            .orderBy('FirstName', 'asc')
+            .limit(8);
+
+        const formatted = results.map(row => ({
+            personid: row.personid,
+            name: `${row.firstname || ''} ${row.lastname || ''}`.trim(),
+            email: row.email || ''
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('Error searching for admin:', error);
+        res.json([]);
+    }
+});
+
+// GET /user-maintenance/search/volunteer - Search API for volunteers
+router.get('/user-maintenance/search/volunteer', requireAuth, requireManager, async (req, res) => {
+    try {
+        const term = req.query.term || '';
+        
+        if (!term || term.trim().length === 0) {
+            return res.json([]);
+        }
+
+        const results = await knexInstance('People')
+            .whereRaw("LOWER(FirstName || ' ' || LastName) LIKE ?", [`%${term.toLowerCase()}%`])
+            .select('PersonID as personid', 'FirstName as firstname', 'LastName as lastname', 'Email as email')
+            .orderBy('LastName', 'asc')
+            .orderBy('FirstName', 'asc')
+            .limit(8);
+
+        const formatted = results.map(row => ({
+            personid: row.personid,
+            name: `${row.firstname || ''} ${row.lastname || ''}`.trim(),
+            email: row.email || ''
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('Error searching for volunteer:', error);
+        res.json([]);
+    }
+});
+
+// POST /user-maintenance/add-admin - Add admin role
+router.post('/user-maintenance/add-admin', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Get Admin roleid
+        const adminRole = await knexInstance('Roles')
+            .where('RoleName', 'Admin')
+            .first();
+
+        if (!adminRole) {
+            req.session.messages = [{ type: 'error', text: 'Admin role not found in database.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Insert with ON CONFLICT DO NOTHING (using raw SQL for PostgreSQL)
+        await knexInstance.raw(`
+            INSERT INTO "PeopleRoles" ("PersonID", "RoleID")
+            VALUES (?, ?)
+            ON CONFLICT DO NOTHING
+        `, [personid, adminRole.RoleID]);
+
+        req.session.messages = [{ type: 'success', text: 'Admin role added successfully.' }];
+        res.redirect('/user-maintenance');
+    } catch (error) {
+        console.error('Error adding admin role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error adding admin role: ' + error.message }];
+        res.redirect('/user-maintenance');
+    }
+});
+
+// POST /user-maintenance/add-volunteer - Add volunteer role
+router.post('/user-maintenance/add-volunteer', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Get Volunteer roleid
+        const volunteerRole = await knexInstance('Roles')
+            .where('RoleName', 'Volunteer')
+            .first();
+
+        if (!volunteerRole) {
+            req.session.messages = [{ type: 'error', text: 'Volunteer role not found in database.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Insert with ON CONFLICT DO NOTHING
+        await knexInstance.raw(`
+            INSERT INTO "PeopleRoles" ("PersonID", "RoleID")
+            VALUES (?, ?)
+            ON CONFLICT DO NOTHING
+        `, [personid, volunteerRole.RoleID]);
+
+        req.session.messages = [{ type: 'success', text: 'Volunteer role added successfully.' }];
+        res.redirect('/user-maintenance');
+    } catch (error) {
+        console.error('Error adding volunteer role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error adding volunteer role: ' + error.message }];
+        res.redirect('/user-maintenance');
+    }
+});
+
+// POST /user-maintenance/remove-admin - Remove admin role
+router.post('/user-maintenance/remove-admin', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Get Admin roleid
+        const adminRole = await knexInstance('Roles')
+            .where('RoleName', 'Admin')
+            .first();
+
+        if (!adminRole) {
+            req.session.messages = [{ type: 'error', text: 'Admin role not found in database.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Delete the role assignment
+        await knexInstance('PeopleRoles')
+            .where('PersonID', personid)
+            .where('RoleID', adminRole.RoleID)
+            .del();
+
+        req.session.messages = [{ type: 'success', text: 'Admin role removed successfully.' }];
+        res.redirect('/user-maintenance');
+    } catch (error) {
+        console.error('Error removing admin role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error removing admin role: ' + error.message }];
+        res.redirect('/user-maintenance');
+    }
+});
+
+// POST /user-maintenance/remove-volunteer - Remove volunteer role
+router.post('/user-maintenance/remove-volunteer', requireAuth, requireManager, async (req, res) => {
+    try {
+        const { personid } = req.body;
+
+        if (!personid) {
+            req.session.messages = [{ type: 'error', text: 'Person ID is required.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Get Volunteer roleid
+        const volunteerRole = await knexInstance('Roles')
+            .where('RoleName', 'Volunteer')
+            .first();
+
+        if (!volunteerRole) {
+            req.session.messages = [{ type: 'error', text: 'Volunteer role not found in database.' }];
+            return res.redirect('/user-maintenance');
+        }
+
+        // Delete the role assignment
+        await knexInstance('PeopleRoles')
+            .where('PersonID', personid)
+            .where('RoleID', volunteerRole.RoleID)
+            .del();
+
+        req.session.messages = [{ type: 'success', text: 'Volunteer role removed successfully.' }];
+        res.redirect('/user-maintenance');
+    } catch (error) {
+        console.error('Error removing volunteer role:', error);
+        req.session.messages = [{ type: 'error', text: 'Error removing volunteer role: ' + error.message }];
+        res.redirect('/user-maintenance');
     }
 });
 

@@ -5,6 +5,14 @@
     <p>View survey responses grouped by event</p>
 </div>
 
+<% if (messages && messages.length > 0) { %>
+    <% messages.forEach(function(message) { %>
+        <div class="flash-message flash-<%= message.type %>" style="max-width: 1200px; margin: 1rem auto; padding: 0 2rem;">
+            <%= message.text %>
+        </div>
+    <% }); %>
+<% } %>
+
 <div class="search-container">
     <label for="search-input" class="sr-only">Search events</label>
     <input type="text" id="search-input" class="search-input" placeholder="Search events by name..." aria-label="Search events by name">
@@ -16,51 +24,26 @@
         <thead>
             <tr>
                 <th scope="col">Event Name</th>
-                <th scope="col">Available Dates</th>
-                <th scope="col"># Surveys</th>
+                <th scope="col">Surveys</th>
                 <th scope="col">Avg Satisfaction</th>
                 <th scope="col">Avg Usefulness</th>
                 <th scope="col">Avg Recommendation</th>
-                <th scope="col">Actions</th>
             </tr>
         </thead>
         <tbody id="surveys-table-body">
             <% if (typeof surveyGroups !== 'undefined' && surveyGroups.length > 0) { %>
                 <% surveyGroups.forEach(function(group) { %>
                     <tr>
-                        <td><%= group.eventName || group.EventName || 'N/A' %></td>
-                        <td>
-                            <% if (group.dates && group.dates.length > 0) { %>
-                                <select class="date-filter" style="min-width: 150px; padding: 0.25rem 0.5rem; border: 1px solid var(--border-light); border-radius: 4px;">
-                                    <option value="">All Dates</option>
-                                    <% group.dates.forEach(function(dateStr) { %>
-                                        <% 
-                                            try {
-                                                const date = new Date(dateStr);
-                                                const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                        %>
-                                            <option value="<%= dateStr %>"><%= formattedDate %></option>
-                                        <% } catch(e) { %>
-                                            <option value="<%= dateStr %>"><%= dateStr %></option>
-                                        <% } %>
-                                    <% }); %>
-                                </select>
-                            <% } else { %>
-                                <span style="color: var(--text-secondary);">No dates</span>
-                            <% } %>
-                        </td>
+                        <td><%= group.eventName || 'N/A' %></td>
                         <td><%= group.survey_count || 0 %></td>
                         <td><%= group.avg_satisfaction ? group.avg_satisfaction.toFixed(2) : 'N/A' %></td>
                         <td><%= group.avg_usefulness ? group.avg_usefulness.toFixed(2) : 'N/A' %></td>
                         <td><%= group.avg_recommendation ? group.avg_recommendation.toFixed(2) : 'N/A' %></td>
-                        <td>
-                            <a href="/surveys/event/<%= group.eventName || group.EventName %>" class="btn btn-sm btn-secondary" aria-label="View details">View Details</a>
-                        </td>
                     </tr>
                 <% }); %>
             <% } else { %>
                 <tr>
-                    <td colspan="7" class="text-center" role="status" aria-live="polite">No survey data found. Surveys will appear here once submitted.</td>
+                    <td colspan="5" class="text-center" role="status" aria-live="polite">No survey data found. Surveys will appear here once submitted.</td>
                 </tr>
             <% } %>
         </tbody>
@@ -92,5 +75,3 @@
 </script>
 
 <%- include('../partials/footer') %>
-
-

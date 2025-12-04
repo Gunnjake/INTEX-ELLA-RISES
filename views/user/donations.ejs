@@ -26,28 +26,18 @@
                     <tr>
                         <td>
                             <% 
-                                const donorName = (donation.FirstName || donation.firstname || donation.firstName || '') + ' ' + (donation.LastName || donation.lastname || donation.lastName || '');
+                                const donorName = (donation.firstname || '') + ' ' + (donation.lastname || '');
                                 const displayName = donorName.trim() || 'Unknown';
                             %>
                             <%= displayName %>
                         </td>
-                        <td><%= (donation.Email || donation.email || '').trim() || '' %></td>
-                        <td>$<%= parseFloat(donation.DonationAmount || donation.donationamount || donation.amount || 0).toFixed(2) %></td>
+                        <td><%= (donation.email || '').trim() || '' %></td>
+                        <td>$<%= donation.donationamount || '0.00' %></td>
                         <td>
-                            <% 
-                                const donationDate = donation.DonationDate || donation.donationdate;
-                                if (donationDate) {
-                                    try {
-                                        const date = new Date(donationDate);
-                                        const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            <%= donation.donationdate 
+                                  ? new Date(donation.donationdate).toISOString().slice(0,10)
+                                  : "N/A" 
                             %>
-                                <%= formattedDate %>
-                            <%  } catch(e) { %>
-                                <%= donationDate %>
-                            <%  }
-                                } else { %>
-                                N/A
-                            <% } %>
                         </td>
                     </tr>
                 <% }); %>

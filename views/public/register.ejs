@@ -79,8 +79,60 @@
                     </div>
                     <div class="form-group form-group-quarter">
                         <label for="state">State</label>
-                        <input type="text" id="state" name="state" maxlength="2" placeholder="UT" value="<%= typeof user !== 'undefined' && user ? user.state || '' : '' %>" autocomplete="address-level1" aria-describedby="state-hint">
-                        <small id="state-hint" class="field-hint">Two-letter code</small>
+                        <select id="state" name="state" autocomplete="address-level1">
+                            <option value="">Select State</option>
+                            <option value="AL" <%= (typeof user !== 'undefined' && user && user.state === 'AL') ? 'selected' : '' %>>Alabama</option>
+                            <option value="AK" <%= (typeof user !== 'undefined' && user && user.state === 'AK') ? 'selected' : '' %>>Alaska</option>
+                            <option value="AZ" <%= (typeof user !== 'undefined' && user && user.state === 'AZ') ? 'selected' : '' %>>Arizona</option>
+                            <option value="AR" <%= (typeof user !== 'undefined' && user && user.state === 'AR') ? 'selected' : '' %>>Arkansas</option>
+                            <option value="CA" <%= (typeof user !== 'undefined' && user && user.state === 'CA') ? 'selected' : '' %>>California</option>
+                            <option value="CO" <%= (typeof user !== 'undefined' && user && user.state === 'CO') ? 'selected' : '' %>>Colorado</option>
+                            <option value="CT" <%= (typeof user !== 'undefined' && user && user.state === 'CT') ? 'selected' : '' %>>Connecticut</option>
+                            <option value="DE" <%= (typeof user !== 'undefined' && user && user.state === 'DE') ? 'selected' : '' %>>Delaware</option>
+                            <option value="FL" <%= (typeof user !== 'undefined' && user && user.state === 'FL') ? 'selected' : '' %>>Florida</option>
+                            <option value="GA" <%= (typeof user !== 'undefined' && user && user.state === 'GA') ? 'selected' : '' %>>Georgia</option>
+                            <option value="HI" <%= (typeof user !== 'undefined' && user && user.state === 'HI') ? 'selected' : '' %>>Hawaii</option>
+                            <option value="ID" <%= (typeof user !== 'undefined' && user && user.state === 'ID') ? 'selected' : '' %>>Idaho</option>
+                            <option value="IL" <%= (typeof user !== 'undefined' && user && user.state === 'IL') ? 'selected' : '' %>>Illinois</option>
+                            <option value="IN" <%= (typeof user !== 'undefined' && user && user.state === 'IN') ? 'selected' : '' %>>Indiana</option>
+                            <option value="IA" <%= (typeof user !== 'undefined' && user && user.state === 'IA') ? 'selected' : '' %>>Iowa</option>
+                            <option value="KS" <%= (typeof user !== 'undefined' && user && user.state === 'KS') ? 'selected' : '' %>>Kansas</option>
+                            <option value="KY" <%= (typeof user !== 'undefined' && user && user.state === 'KY') ? 'selected' : '' %>>Kentucky</option>
+                            <option value="LA" <%= (typeof user !== 'undefined' && user && user.state === 'LA') ? 'selected' : '' %>>Louisiana</option>
+                            <option value="ME" <%= (typeof user !== 'undefined' && user && user.state === 'ME') ? 'selected' : '' %>>Maine</option>
+                            <option value="MD" <%= (typeof user !== 'undefined' && user && user.state === 'MD') ? 'selected' : '' %>>Maryland</option>
+                            <option value="MA" <%= (typeof user !== 'undefined' && user && user.state === 'MA') ? 'selected' : '' %>>Massachusetts</option>
+                            <option value="MI" <%= (typeof user !== 'undefined' && user && user.state === 'MI') ? 'selected' : '' %>>Michigan</option>
+                            <option value="MN" <%= (typeof user !== 'undefined' && user && user.state === 'MN') ? 'selected' : '' %>>Minnesota</option>
+                            <option value="MS" <%= (typeof user !== 'undefined' && user && user.state === 'MS') ? 'selected' : '' %>>Mississippi</option>
+                            <option value="MO" <%= (typeof user !== 'undefined' && user && user.state === 'MO') ? 'selected' : '' %>>Missouri</option>
+                            <option value="MT" <%= (typeof user !== 'undefined' && user && user.state === 'MT') ? 'selected' : '' %>>Montana</option>
+                            <option value="NE" <%= (typeof user !== 'undefined' && user && user.state === 'NE') ? 'selected' : '' %>>Nebraska</option>
+                            <option value="NV" <%= (typeof user !== 'undefined' && user && user.state === 'NV') ? 'selected' : '' %>>Nevada</option>
+                            <option value="NH" <%= (typeof user !== 'undefined' && user && user.state === 'NH') ? 'selected' : '' %>>New Hampshire</option>
+                            <option value="NJ" <%= (typeof user !== 'undefined' && user && user.state === 'NJ') ? 'selected' : '' %>>New Jersey</option>
+                            <option value="NM" <%= (typeof user !== 'undefined' && user && user.state === 'NM') ? 'selected' : '' %>>New Mexico</option>
+                            <option value="NY" <%= (typeof user !== 'undefined' && user && user.state === 'NY') ? 'selected' : '' %>>New York</option>
+                            <option value="NC" <%= (typeof user !== 'undefined' && user && user.state === 'NC') ? 'selected' : '' %>>North Carolina</option>
+                            <option value="ND" <%= (typeof user !== 'undefined' && user && user.state === 'ND') ? 'selected' : '' %>>North Dakota</option>
+                            <option value="OH" <%= (typeof user !== 'undefined' && user && user.state === 'OH') ? 'selected' : '' %>>Ohio</option>
+                            <option value="OK" <%= (typeof user !== 'undefined' && user && user.state === 'OK') ? 'selected' : '' %>>Oklahoma</option>
+                            <option value="OR" <%= (typeof user !== 'undefined' && user && user.state === 'OR') ? 'selected' : '' %>>Oregon</option>
+                            <option value="PA" <%= (typeof user !== 'undefined' && user && user.state === 'PA') ? 'selected' : '' %>>Pennsylvania</option>
+                            <option value="RI" <%= (typeof user !== 'undefined' && user && user.state === 'RI') ? 'selected' : '' %>>Rhode Island</option>
+                            <option value="SC" <%= (typeof user !== 'undefined' && user && user.state === 'SC') ? 'selected' : '' %>>South Carolina</option>
+                            <option value="SD" <%= (typeof user !== 'undefined' && user && user.state === 'SD') ? 'selected' : '' %>>South Dakota</option>
+                            <option value="TN" <%= (typeof user !== 'undefined' && user && user.state === 'TN') ? 'selected' : '' %>>Tennessee</option>
+                            <option value="TX" <%= (typeof user !== 'undefined' && user && user.state === 'TX') ? 'selected' : '' %>>Texas</option>
+                            <option value="UT" <%= (typeof user !== 'undefined' && user && user.state === 'UT') ? 'selected' : '' %>>Utah</option>
+                            <option value="VT" <%= (typeof user !== 'undefined' && user && user.state === 'VT') ? 'selected' : '' %>>Vermont</option>
+                            <option value="VA" <%= (typeof user !== 'undefined' && user && user.state === 'VA') ? 'selected' : '' %>>Virginia</option>
+                            <option value="WA" <%= (typeof user !== 'undefined' && user && user.state === 'WA') ? 'selected' : '' %>>Washington</option>
+                            <option value="WV" <%= (typeof user !== 'undefined' && user && user.state === 'WV') ? 'selected' : '' %>>West Virginia</option>
+                            <option value="WI" <%= (typeof user !== 'undefined' && user && user.state === 'WI') ? 'selected' : '' %>>Wisconsin</option>
+                            <option value="WY" <%= (typeof user !== 'undefined' && user && user.state === 'WY') ? 'selected' : '' %>>Wyoming</option>
+                            <option value="DC" <%= (typeof user !== 'undefined' && user && user.state === 'DC') ? 'selected' : '' %>>District of Columbia</option>
+                        </select>
                     </div>
                     <div class="form-group form-group-quarter">
                         <label for="zip">Zip Code</label>
@@ -112,12 +164,12 @@
                     <div class="form-row">
                     <div class="form-group form-group-half">
                         <label for="password">Create Password <span aria-label="required">*</span></label>
-                        <input type="password" id="password" name="password" required aria-describedby="password-hint" aria-required="true" autocomplete="new-password">
-                        <small id="password-hint" class="field-hint">Any length</small>
+                        <input type="password" id="password" name="password" required aria-describedby="password-hint" aria-required="true" autocomplete="new-password" maxlength="20">
+                        <small id="password-hint" class="field-hint">Maximum 20 characters</small>
                     </div>
                     <div class="form-group form-group-half">
                         <label for="confirmPassword">Confirm Password <span aria-label="required">*</span></label>
-                        <input type="password" id="confirmPassword" name="confirmPassword" required aria-describedby="confirm-password-hint" aria-required="true" autocomplete="new-password">
+                        <input type="password" id="confirmPassword" name="confirmPassword" required aria-describedby="confirm-password-hint" aria-required="true" autocomplete="new-password" maxlength="20">
                         <small id="confirm-password-hint" class="field-hint">Re-enter your password</small>
                     </div>
                     </div>

@@ -21,10 +21,12 @@
                         <td><%= m.milestonetitle %></td>
                         <td><%= m.milestonedate ? new Date(m.milestonedate).toISOString().slice(0,10) : 'N/A' %></td>
                         <td>
-                            <a href="/milestones/edit/<%= m.milestoneid %>" class="btn btn-sm btn-primary">Edit</a>
-                            <form method="POST" action="/milestones/delete/<%= m.milestoneid %>" onsubmit="return confirm('Remove this milestone?');" style="display: inline;">
-                                <button class="btn btn-sm btn-danger" type="submit">Remove</button>
-                            </form>
+                            <div class="action-buttons">
+                                <a href="/milestones/edit/<%= m.milestoneid %>" class="btn btn-sm btn-primary">Edit</a>
+                                <form method="POST" action="/milestones/delete/<%= m.milestoneid %>" onsubmit="return confirm('Remove this milestone?');" style="display: inline;">
+                                    <button class="btn btn-sm btn-danger" type="submit">Remove</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 <% }) %>

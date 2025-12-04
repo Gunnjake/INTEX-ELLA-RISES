@@ -34,6 +34,10 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// Middleware to clear flash messages after they've been displayed
+const clearMessagesAfterRender = require('./middleware/clearMessages');
+app.use(clearMessagesAfterRender);
+
 // Load all routes
 const routes = require('./routes');
 app.use('/', routes);
@@ -85,6 +89,7 @@ async function testDatabaseConnection() {
 // Start server immediately (non-blocking)
 app.listen(PORT, () => {
     console.log(`✓ Ella Rises server running on port ${PORT}`);
+    console.log(`✓ View the application at: http://localhost:${PORT}`);
     // Test database connection in background (non-blocking)
     testDatabaseConnection();
 });

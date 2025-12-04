@@ -14,6 +14,8 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/jpeg" href="/images/ella-rises-heart.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="/images/ella-rises-heart.jpg">
+    <link rel="apple-touch-icon" href="/images/ella-rises-heart.jpg">
     
     <!-- Preload critical above-the-fold images for homepage -->
     <% if (typeof title !== 'undefined' && title.includes('Empowering the Future Generation')) { %>
@@ -84,13 +86,20 @@
         <header class="admin-header" role="banner">
             <nav class="admin-navbar" role="navigation" aria-label="Admin navigation">
                 <div class="admin-nav-container">
-                    <!-- Hamburger menu button for admin nav on mobile -->
-                    <button class="admin-mobile-menu-toggle" aria-label="Toggle admin navigation menu" aria-expanded="false" type="button" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span class="hamburger-line"></span>
-                        <span class="hamburger-line"></span>
-                        <span class="hamburger-line"></span>
-                        <span style="font-weight: bold; color: var(--white); margin-left: 0.25rem;">Admin</span>
-                    </button>
+                    <!-- Dynamic role label on far left -->
+                    <% 
+                        let roleLabel = 'User';
+                        if (user.roles && user.roles.length > 0) {
+                            // Get the first role and capitalize it
+                            const firstRole = user.roles[0];
+                            roleLabel = firstRole.charAt(0).toUpperCase() + firstRole.slice(1);
+                        } else if (user.role === 'manager') {
+                            roleLabel = 'Admin';
+                        }
+                    %>
+                    <span class="admin-label" style="font-weight: bold; color: var(--white); font-size: 1.1rem;"><%= roleLabel %></span>
+                    
+                    <!-- Navigation menu items -->
                     <ul class="admin-nav-menu">
                         <li><a href="/dashboard" class="admin-nav-link">Dashboard</a></li>
                         <li><a href="/events" class="admin-nav-link">Events</a></li>
@@ -108,13 +117,20 @@
                             <li><a href="/milestones" class="admin-nav-link">My Milestones</a></li>
                         <% } %>
                     </ul>
+                    
+                    <!-- Hamburger menu button for admin nav - shown on mobile only -->
+                    <button class="admin-mobile-menu-toggle" aria-label="Toggle admin navigation menu" aria-expanded="false" type="button">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </button>
                 </div>
             </nav>
         </header>
     <% } %>
 
     <!-- Flash messages for success/error notifications -->
-    <% if (typeof messages !== 'undefined' && messages) { %>
+    <% if (typeof messages !== 'undefined' && messages && messages.length > 0) { %>
         <div class="flash-messages" role="region" aria-live="polite" aria-atomic="true">
             <% messages.forEach(function(message) { %>
                 <div class="flash-message flash-<%= message.type %>" role="alert">
@@ -122,6 +138,12 @@
                 </div>
             <% }); %>
         </div>
+        <script>
+            // Clear messages after displaying them to prevent showing again
+            (function() {
+                fetch('/api/clear-messages', { method: 'POST', credentials: 'same-origin' }).catch(function() {});
+            })();
+        </script>
     <% } %>
 
     <!-- Main page content -->
