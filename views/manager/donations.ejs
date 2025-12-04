@@ -52,7 +52,7 @@
                             <% } %>
                         </td>
                         <td>
-                            <a href="/donations/<%= donation.DonationID || donation.donationid || donation.id %>/edit" class="btn btn-sm btn-secondary" aria-label="Edit donation">Edit</a>
+                            <a href="/donations/edit/<%= donation.DonationID || donation.donationid || donation.id %>" class="btn btn-sm btn-primary" aria-label="Edit donation">Edit</a>
                             <form action="/donations/<%= donation.DonationID || donation.donationid || donation.id %>/delete" method="POST" style="display: inline;">
                                 <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this donation?');" aria-label="Delete donation">Delete</button>
                             </form>

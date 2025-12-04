@@ -1035,39 +1035,105 @@ router.post('/participants/new', requireAuth, async (req, res) => {
     }
 });
 
-router.get('/participants/:id/edit', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.get('/participants/edit/:id', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
+
     try {
-        // TODO: const participantData = await db('participants').where({ id }).first();
-        res.render('manager/participants-form', {
-            title: 'Edit Participant - Ella Rises',
+        const participant = await knexInstance("People as p")
+            .leftJoin("ParticipantDetails as pd", "pd.PersonID", "p.PersonID")
+            .where("p.PersonID", id)
+            .select(
+                "p.PersonID as personid",
+                "p.FirstName as firstname",
+                "p.LastName as lastname",
+                "p.Email as email",
+                "p.PhoneNumber as phonenumber",
+                "p.City as city",
+                "p.State as state",
+                "p.Country as country",
+                "p.Zip as zip",
+                "pd.ParticipantSchoolOrEmployer as participantschooloremployer",
+                "pd.ParticipantFieldOfInterest as participantfieldofinterest",
+                "pd.NewsLetter as newsletter"
+            )
+            .first();
+
+        if (!participant) {
+            req.session.messages = [{ type: 'error', text: 'Participant not found.' }];
+            return res.redirect('/participants');
+        }
+
+        res.render("manager/participants-edit", {
+            title: "Edit Participant",
             user: req.session.user,
-            participantData: null
+            participant
         });
-    } catch (error) {
-        console.error('Error fetching participant:', error);
-        req.session.messages = [{ type: 'error', text: 'Error loading participant data.' }];
-        res.redirect('/participants');
+
+    } catch (err) {
+        console.error("Error loading participant:", err);
+        req.session.messages = [{ type: 'error', text: 'Error loading participant: ' + err.message }];
+        res.redirect("/participants");
     }
 });
 
-router.post('/participants/:id/update', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.post('/participants/edit/:id', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
-    const { first_name, last_name, email, phone, program, enrollment_date } = req.body;
+
+    const {
+        firstname,
+        lastname,
+        email,
+        phonenumber,
+        city,
+        state,
+        school,
+        interest,
+        newsletter
+    } = req.body;
+
     try {
-        // TODO: Update participant in database
+        // Update People table
+        await knexInstance("People")
+            .where("PersonID", id)
+            .update({
+                FirstName: firstname,
+                LastName: lastname,
+                Email: email,
+                PhoneNumber: phonenumber || null,
+                City: city || null,
+                State: state || null
+            });
+
+        // Ensure row exists in ParticipantDetails
+        const hasDetails = await knexInstance("ParticipantDetails")
+            .where("PersonID", id)
+            .first();
+
+        if (!hasDetails) {
+            await knexInstance("ParticipantDetails")
+                .insert({
+                    PersonID: id,
+                    ParticipantSchoolOrEmployer: school || null,
+                    ParticipantFieldOfInterest: interest || null,
+                    NewsLetter: newsletter === "true" ? 1 : 0
+                });
+        } else {
+            await knexInstance("ParticipantDetails")
+                .where("PersonID", id)
+                .update({
+                    ParticipantSchoolOrEmployer: school || null,
+                    ParticipantFieldOfInterest: interest || null,
+                    NewsLetter: newsletter === "true" ? 1 : 0
+                });
+        }
+
         req.session.messages = [{ type: 'success', text: 'Participant updated successfully' }];
-        res.redirect('/participants');
-    } catch (error) {
-        console.error('Error updating participant:', error);
-        req.session.messages = [{ type: 'error', text: 'Error updating participant. Please try again.' }];
-        res.redirect(`/participants/${id}/edit`);
+        res.redirect("/participants");
+
+    } catch (err) {
+        console.error("Error updating participant:", err);
+        req.session.messages = [{ type: 'error', text: 'Error updating participant: ' + err.message }];
+        res.redirect("/participants/edit/" + id);
     }
 });
 
@@ -1191,10 +1257,7 @@ router.get('/events', requireAuth, async (req, res) => {
     }
 });
 
-router.get('/events/new', requireAuth, (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.get('/events/new', requireAuth, requireManager, (req, res) => {
     res.render('manager/events-form', {
         title: 'Add New Event - Ella Rises',
         user: req.session.user,
@@ -1202,19 +1265,19 @@ router.get('/events/new', requireAuth, (req, res) => {
     });
 });
 
-router.post('/events/new', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
-    const { event_name, event_type, event_date, location, description } = req.body;
+router.post('/events/new', requireAuth, requireManager, async (req, res) => {
+    const { event_name, event_type, eventstart, eventend, location, description, eventcapacity, eventregistrationdeadline } = req.body;
     
     // Validate required fields
-    if (!event_name || !event_type || !event_date || !location) {
-        req.session.messages = [{ type: 'error', text: 'Event name, type, date, and location are required.' }];
+    if (!event_name || !event_type || !eventstart || !eventend || !location) {
+        req.session.messages = [{ type: 'error', text: 'Event name, type, start time, end time, and location are required.' }];
         return res.redirect('/events/new');
     }
     
     try {
+        // Fix sequence before insert if needed
+        const { fixEventOccurrenceSequence, fixEventTemplateSequence } = require('../utils/fixSequences');
+        
         // Step 1: Create or get EventTemplate
         let eventTemplate = await knexInstance('EventTemplate')
             .where('EventName', event_name)
@@ -1228,20 +1291,14 @@ router.post('/events/new', requireAuth, async (req, res) => {
                         EventName: event_name,
                         EventType: event_type,
                         EventDescription: description || null,
-                        EventDefaultCapacity: null
+                        EventDefaultCapacity: eventcapacity ? parseInt(eventcapacity) : null
                     })
                     .returning('EventTemplateID');
                 eventTemplate = newTemplate;
             } catch (insertError) {
                 // If insert fails due to sequence issue, reset sequence and retry
                 if (insertError.code === '23505' || insertError.message.includes('duplicate key')) {
-                    // Get max ID and reset sequence
-                    const maxIdResult = await knexInstance('EventTemplate')
-                        .max('EventTemplateID as max_id')
-                        .first();
-                    
-                    const maxId = maxIdResult?.max_id || 0;
-                    await knexInstance.raw(`SELECT setval('eventtemplate_eventtemplateid_seq', ${maxId}, true)`);
+                    await fixEventTemplateSequence(knexInstance);
                     
                     // Try insert again
                     const [newTemplate] = await knexInstance('EventTemplate')
@@ -1249,7 +1306,7 @@ router.post('/events/new', requireAuth, async (req, res) => {
                             EventName: event_name,
                             EventType: event_type,
                             EventDescription: description || null,
-                            EventDefaultCapacity: null
+                            EventDefaultCapacity: eventcapacity ? parseInt(eventcapacity) : null
                         })
                         .returning('EventTemplateID');
                     eventTemplate = newTemplate;
@@ -1269,17 +1326,38 @@ router.post('/events/new', requireAuth, async (req, res) => {
         
         const templateId = eventTemplate.EventTemplateID || eventTemplate.eventtemplateid;
         
-        // Step 2: Create EventOccurrence
-        const eventDateTimeStart = new Date(event_date);
-        await knexInstance('EventOccurrences')
-            .insert({
-                EventTemplateID: templateId,
-                EventName: event_name,
-                EventDateTimeStart: eventDateTimeStart,
-                EventLocation: location,
-                EventCapacity: null,
-                EventRegistrationDeadline: null
-            });
+        // Step 2: Create EventOccurrence (DO NOT include EventOccurrenceID - let SERIAL handle it)
+        try {
+            await knexInstance('EventOccurrences')
+                .insert({
+                    EventTemplateID: templateId,
+                    EventName: event_name,
+                    EventLocation: location,
+                    EventDateTimeStart: eventstart ? new Date(eventstart) : null,
+                    EventDateTimeEnd: eventend ? new Date(eventend) : null,
+                    EventCapacity: eventcapacity ? parseInt(eventcapacity) : null,
+                    EventRegistrationDeadline: eventregistrationdeadline ? new Date(eventregistrationdeadline) : null
+                });
+        } catch (insertError) {
+            // If insert fails due to sequence issue, reset sequence and retry
+            if (insertError.code === '23505' || insertError.message.includes('duplicate key')) {
+                await fixEventOccurrenceSequence(knexInstance);
+                
+                // Try insert again
+                await knexInstance('EventOccurrences')
+                    .insert({
+                        EventTemplateID: templateId,
+                        EventName: event_name,
+                        EventLocation: location,
+                        EventDateTimeStart: eventstart ? new Date(eventstart) : null,
+                        EventDateTimeEnd: eventend ? new Date(eventend) : null,
+                        EventCapacity: eventcapacity ? parseInt(eventcapacity) : null,
+                        EventRegistrationDeadline: eventregistrationdeadline ? new Date(eventregistrationdeadline) : null
+                    });
+            } else {
+                throw insertError; // Re-throw if it's a different error
+            }
+        }
         
         req.session.messages = [{ type: 'success', text: 'Event created successfully' }];
         res.redirect('/events');
@@ -1290,39 +1368,93 @@ router.post('/events/new', requireAuth, async (req, res) => {
     }
 });
 
-router.get('/events/:id/edit', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.get('/events/edit/:id', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
+
     try {
-        // TODO: const eventData = await db('events').where({ id }).first();
-        res.render('manager/events-form', {
-            title: 'Edit Event - Ella Rises',
+        const event = await knexInstance("EventOccurrences as eo")
+            .leftJoin("EventTemplate as et", "eo.EventTemplateID", "et.EventTemplateID")
+            .where("eo.EventOccurrenceID", id)
+            .select(
+                "eo.EventOccurrenceID as eventoccurrenceid",
+                "eo.EventName as eventname",
+                "eo.EventDateTimeStart as eventdatetimestart",
+                "eo.EventDateTimeEnd as eventdatetimeend",
+                "eo.EventLocation as eventlocation",
+                "eo.EventCapacity as eventcapacity",
+                "et.EventTemplateID as eventtemplateid",
+                "et.EventType as eventtype",
+                "et.EventDescription as eventdescription"
+            )
+            .first();
+
+        if (!event) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect('/events');
+        }
+
+        res.render("manager/events-edit", {
+            title: "Edit Event",
             user: req.session.user,
-            eventData: null
+            event
         });
-    } catch (error) {
-        console.error('Error fetching event:', error);
-        req.session.messages = [{ type: 'error', text: 'Error loading event data.' }];
-        res.redirect('/events');
+
+    } catch (err) {
+        console.error("Error loading event:", err);
+        req.session.messages = [{ type: 'error', text: 'Error loading event: ' + err.message }];
+        return res.redirect("/events");
     }
 });
 
-router.post('/events/:id/update', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.post('/events/edit/:id', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
-    const { event_name, event_type, event_date, location, description } = req.body;
+
+    const {
+        eventname,
+        eventtype,
+        eventdescription,
+        eventlocation,
+        eventstart,
+        eventend,
+        eventcapacity
+    } = req.body;
+
     try {
-        // TODO: Update event in database
+        // Update Event Template (if needed)
+        const event = await knexInstance("EventOccurrences")
+            .where("EventOccurrenceID", id)
+            .first();
+
+        if (!event) {
+            req.session.messages = [{ type: 'error', text: 'Event not found.' }];
+            return res.redirect("/events");
+        }
+
+        await knexInstance("EventTemplate")
+            .where("EventTemplateID", event.EventTemplateID)
+            .update({
+                EventType: eventtype || null,
+                EventDescription: eventdescription || null
+            });
+
+        // Update EventOccurrence fields
+        await knexInstance("EventOccurrences")
+            .where("EventOccurrenceID", id)
+            .update({
+                EventName: eventname,
+                EventLocation: eventlocation || null,
+                EventDateTimeStart: eventstart ? new Date(eventstart) : null,
+                EventDateTimeEnd: eventend ? new Date(eventend) : null,
+                EventCapacity: eventcapacity ? parseInt(eventcapacity) : null
+            });
+
         req.session.messages = [{ type: 'success', text: 'Event updated successfully' }];
-        res.redirect('/events');
-    } catch (error) {
-        console.error('Error updating event:', error);
-        req.session.messages = [{ type: 'error', text: 'Error updating event. Please try again.' }];
-        res.redirect(`/events/${id}/edit`);
+        res.redirect("/events");
+
+    } catch (err) {
+        console.error("Error updating event:", err);
+        req.session.messages = [{ type: 'error', text: 'Error updating event: ' + err.message }];
+        res.redirect("/events/edit/" + id);
     }
 });
 
@@ -2263,39 +2395,64 @@ router.post('/donations/new', requireAuth, async (req, res) => {
     }
 });
 
-router.get('/donations/:id/edit', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.get('/donations/edit/:id', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
+
     try {
-        // TODO: const donationData = await db('donations').where({ id }).first();
-        res.render('manager/donations-form', {
-            title: 'Edit Donation - Ella Rises',
+        const donation = await knexInstance("Donations as d")
+            .leftJoin("People as p", "p.PersonID", "d.PersonID")
+            .where("d.DonationID", id)
+            .select(
+                "d.DonationID as donationid",
+                "d.DonationAmount as amount",
+                "d.DonationDate as donationdate",
+                "p.FirstName as firstname",
+                "p.LastName as lastname",
+                "p.Email as email"
+            )
+            .first();
+
+        if (!donation) {
+            req.session.messages = [{ type: 'error', text: 'Donation not found.' }];
+            return res.redirect('/donations');
+        }
+
+        res.render("manager/donations-edit", {
+            title: "Edit Donation",
             user: req.session.user,
-            donationData: null
+            donation
         });
-    } catch (error) {
-        console.error('Error fetching donation:', error);
-        req.session.messages = [{ type: 'error', text: 'Error loading donation data.' }];
-        res.redirect('/donations');
+
+    } catch (err) {
+        console.error("Error loading donation:", err);
+        req.session.messages = [{ type: 'error', text: 'Error loading donation: ' + err.message }];
+        return res.redirect("/donations");
     }
 });
 
-router.post('/donations/:id/update', requireAuth, async (req, res) => {
-    if (req.session.user.role !== 'manager') {
-        return res.status(403).send('Access denied.');
-    }
+router.post('/donations/edit/:id', requireAuth, requireManager, async (req, res) => {
     const { id } = req.params;
-    const { donor_name, donor_email, donor_phone, amount, payment_method, donation_date, notes } = req.body;
+
+    const {
+        amount,
+        donationdate
+    } = req.body;
+
     try {
-        // TODO: Update donation in database
+        await knexInstance("Donations")
+            .where("DonationID", id)
+            .update({
+                DonationAmount: amount ? parseFloat(amount) : null,
+                DonationDate: donationdate ? new Date(donationdate) : null
+            });
+
         req.session.messages = [{ type: 'success', text: 'Donation updated successfully' }];
-        res.redirect('/donations');
-    } catch (error) {
-        console.error('Error updating donation:', error);
-        req.session.messages = [{ type: 'error', text: 'Error updating donation. Please try again.' }];
-        res.redirect(`/donations/${id}/edit`);
+        res.redirect("/donations");
+
+    } catch (err) {
+        console.error("Error updating donation:", err);
+        req.session.messages = [{ type: 'error', text: 'Error updating donation: ' + err.message }];
+        res.redirect("/donations/edit/" + id);
     }
 });
 

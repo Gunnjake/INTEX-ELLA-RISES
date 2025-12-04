@@ -22,12 +22,24 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="event_date">Event Date *</label>
-            <input type="datetime-local" id="event_date" name="event_date" value="<%= eventData ? (eventData.event_date || '') : '' %>" required>
+            <label for="eventstart">Start Date/Time *</label>
+            <input type="datetime-local" id="eventstart" name="eventstart" value="<%= eventData ? (eventData.eventstart || eventData.event_datetime_start || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="eventend">End Date/Time *</label>
+            <input type="datetime-local" id="eventend" name="eventend" value="<%= eventData ? (eventData.eventend || eventData.event_datetime_end || '') : '' %>" required>
         </div>
         <div class="form-group">
             <label for="location">Location *</label>
             <input type="text" id="location" name="location" value="<%= eventData ? (eventData.location || '') : '' %>" required>
+        </div>
+        <div class="form-group">
+            <label for="eventcapacity">Capacity</label>
+            <input type="number" id="eventcapacity" name="eventcapacity" min="0" value="<%= eventData ? (eventData.eventcapacity || eventData.capacity || '') : '' %>">
+        </div>
+        <div class="form-group">
+            <label for="eventregistrationdeadline">Registration Deadline</label>
+            <input type="datetime-local" id="eventregistrationdeadline" name="eventregistrationdeadline" value="<%= eventData ? (eventData.eventregistrationdeadline || eventData.registration_deadline || '') : '' %>">
         </div>
         <div class="form-group">
             <label for="description">Description</label>

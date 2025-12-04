@@ -72,6 +72,10 @@ async function testDatabaseConnection() {
         
         await Promise.race([connectionPromise, timeoutPromise]);
         console.log('✓ Database connected successfully');
+        
+        // Fix sequences after connection
+        const { fixAllSequences } = require('./utils/fixSequences');
+        await fixAllSequences(knexInstance);
     } catch (error) {
         console.log('⚠ Database connection failed. Server will continue without database.');
         console.log(`  Error: ${error.message}`);

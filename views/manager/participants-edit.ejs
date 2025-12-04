@@ -1,0 +1,66 @@
+<%- include('../partials/header', { title: "Edit Participant", user: user || null }) %>
+
+<div class="page-header">
+    <h1>Edit Participant</h1>
+    <p>Update participant information</p>
+</div>
+
+<div class="form-container">
+    <form method="POST" action="/participants/edit/<%= participant.personid %>">
+        <div class="form-group">
+            <label for="firstname">First Name *</label>
+            <input type="text" id="firstname" name="firstname" value="<%= participant.firstname || '' %>" required>
+        </div>
+
+        <div class="form-group">
+            <label for="lastname">Last Name *</label>
+            <input type="text" id="lastname" name="lastname" value="<%= participant.lastname || '' %>" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" value="<%= participant.email || '' %>" required>
+        </div>
+
+        <div class="form-group">
+            <label for="phonenumber">Phone</label>
+            <input type="text" id="phonenumber" name="phonenumber" value="<%= participant.phonenumber || '' %>">
+        </div>
+
+        <div class="form-group">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" value="<%= participant.city || '' %>">
+        </div>
+
+        <div class="form-group">
+            <label for="state">State</label>
+            <input type="text" id="state" name="state" value="<%= participant.state || '' %>">
+        </div>
+
+        <div class="form-group">
+            <label for="school">School / Employer</label>
+            <input type="text" id="school" name="school" value="<%= participant.participantschooloremployer || '' %>">
+        </div>
+
+        <div class="form-group">
+            <label for="interest">Field of Interest</label>
+            <input type="text" id="interest" name="interest" value="<%= participant.participantfieldofinterest || '' %>">
+        </div>
+
+        <div class="form-group">
+            <label for="newsletter">Newsletter Subscription</label>
+            <select id="newsletter" name="newsletter">
+                <option value="true" <%= (participant.newsletter === 1 || participant.newsletter === true) ? "selected" : "" %>>Yes</option>
+                <option value="false" <%= (participant.newsletter !== 1 && participant.newsletter !== true) ? "selected" : "" %>>No</option>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Save Changes</button>
+            <a href="/participants" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<%- include('../partials/footer') %>
+
