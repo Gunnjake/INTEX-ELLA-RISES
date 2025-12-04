@@ -6,39 +6,26 @@
 </head>
 <body class="p-4">
 
-<h2>Test Login Query</h2>
+<h2>Test Email Lookup</h2>
 
 <form method="POST" action="/test-login-query" class="card p-4 mb-4" style="max-width: 500px;">
-    <div class="mb-3">
-        <label>Email</label>
-        <input class="form-control" type="text" name="email" value="<%= testEmail %>" required>
-    </div>
-    <div class="mb-3">
-        <label>Password</label>
-        <input class="form-control" type="password" name="password" value="<%= testPassword %>" required>
-    </div>
-    <button class="btn btn-primary w-100">Run Login Query</button>
+    <label>Email</label>
+    <input class="form-control mb-3" type="text" name="email" value="<%= emailInput %>" required>
+
+    <button class="btn btn-primary w-100">Search</button>
 </form>
 
 <script>
-    <% if (queryError) { %>
-        alert("ERROR:\n\n<%= queryError.replace(/"/g, '\\"') %>");
-    <% } %>
-
-    <% if (queryResult) { %>
-        alert("Query Result:\n\n<%= queryResult.replace(/"/g, '\\"') %>");
-    <% } %>
-
-    <% if (loginError) { %>
-        alert("Login Error:\n\n<%= loginError.replace(/"/g, '\\"') %>");
-    <% } %>
-
-    <% if (loginResult) { %>
-        alert("Login Result:\n\n<%= JSON.stringify(loginResult, null, 2).replace(/"/g, '\\"') %>");
+    <% if (error) { %>
+        alert("ERROR:\n\n<%= error.replace(/"/g, '\\"') %>");
     <% } %>
 
     <% if (actualQuery) { %>
         alert("SQL Used:\n\n<%= actualQuery.replace(/"/g, '\\"') %>");
+    <% } %>
+
+    <% if (results) { %>
+        alert("Results:\n\n<%= JSON.stringify(results, null, 2).replace(/"/g, '\\"') %>");
     <% } %>
 </script>
 

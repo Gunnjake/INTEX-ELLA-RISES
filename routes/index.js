@@ -315,185 +315,75 @@ router.get('/test-login', (req, res) => {
 });
 
 // ============================================================================
-// TEST LOGIN QUERY ROUTES (FULL WORKING VERSION)
+// TEST LOGIN QUERY ROUTES (SHOW EVERYTHING FOR AN EMAIL)
 // ============================================================================
 
-// GET - Shows the test page
-router.get('/test-login-query', async (req, res) => {
-    let queryResult = null;
-    let queryError = null;
-
-    try {
-        const data = await knexInstance('People').select('*');
-        queryResult = JSON.stringify(data, null, 2);
-    } catch (err) {
-        queryError = err.message || "Unknown error";
-    }
-
+// GET - shows form + optional results
+router.get('/test-login-query', (req, res) => {
     res.render('test/query-test', {
         title: 'Query Testing - Ella Rises',
         user: req.session.user || null,
-        queryResult,
-        queryError,
 
-        // POST variables empty on GET
-        loginError: null,
-        loginResult: null,
-        rawOutput: null,
+        // No results yet
+        results: null,
         actualQuery: null,
-        testEmail: '',
-        testPassword: '',
-        hasResults: false
+        error: null,
+        emailInput: ""
     });
 });
 
-// POST - Run full login query
+// POST - Search email and show everything
 router.post('/test-login-query', async (req, res) => {
-    const sEmail = req.body.email;
-    const sPassword = req.body.password;
+    const email = req.body.email;
+
+    const sqlQuery = `
+SELECT
+    p.*,
+
+    r.roleid,
+    r.rolename,
+
+    ad.adminrole,
+    ad.salary,
+    ad.password AS adminpassword,
+
+    vd.volunteerrole,
+    vd.password AS volunteerpassword,
+
+    pd.participantschooloremployer,
+    pd.participantfieldofinterest,
+    pd.newsletter,
+    pd.password AS participantpassword
+
+FROM people p
+LEFT JOIN peopleroles pr ON p.personid = pr.personid
+LEFT JOIN roles r ON pr.roleid = r.roleid
+LEFT JOIN admindetails ad ON p.personid = ad.personid
+LEFT JOIN volunteerdetails vd ON p.personid = vd.personid
+LEFT JOIN participantdetails pd ON p.personid = pd.personid
+WHERE p.email = ?
+    `;
 
     try {
-        const userData = await knexInstance.raw(`
-            SELECT 
-                p.PersonID,
-                p.Email,
-                p.FirstName,
-                p.LastName,
-                r.RoleID,
-                r.RoleName,
-                CASE 
-                    WHEN r.RoleID = 1 THEN ad.Password
-                    WHEN r.RoleID = 2 THEN vd.Password
-                    WHEN r.RoleID = 3 THEN pd.Password
-                END AS RolePassword,
-                ad.AdminRole,
-                ad.Salary,
-                vd.VolunteerRole,
-                pd.ParticipantSchoolOrEmployer,
-                pd.ParticipantFieldOfInterest,
-                pd.NewsLetter
-            FROM People p
-            JOIN PeopleRoles pr ON p.PersonID = pr.PersonID
-            JOIN Roles r ON pr.RoleID = r.RoleID
-            LEFT JOIN AdminDetails ad ON p.PersonID = ad.PersonID AND r.RoleID = 1
-            LEFT JOIN VolunteerDetails vd ON p.PersonID = vd.PersonID AND r.RoleID = 2
-            LEFT JOIN ParticipantDetails pd ON p.PersonID = pd.PersonID AND r.RoleID = 3
-            WHERE p.Email = ?
-            LIMIT 1
-        `, [sEmail]);
+        const results = await knexInstance.raw(sqlQuery, [email]);
 
-        const user = userData.rows && userData.rows.length > 0 ? userData.rows[0] : null;
-
-        if (!user) {
-            return res.render('test/query-test', {
-                title: 'Query Testing - Ella Rises',
-                user: req.session.user || null,
-
-                queryResult: null,
-                queryError: null,
-
-                loginError: 'No user found with that email',
-                loginResult: null,
-                rawOutput: null,
-                actualQuery: null,
-                testEmail: sEmail,
-                testPassword: sPassword,
-                hasResults: false
-            });
-        }
-
-        const result = {
-            found: true,
-            user: {
-                PersonID: user.personid,
-                Email: user.email,
-                FirstName: user.firstname,
-                LastName: user.lastname,
-                RoleID: user.roleid,
-                RoleName: user.rolename,
-                RolePassword: user.rolepassword ? "***SET***" : "(null)",
-                PasswordMatch: user.rolepassword === sPassword
-            },
-            roleDetails: {}
-        };
-
-        if (user.roleid === 1) {
-            result.roleDetails = {
-                AdminRole: user.adminrole,
-                Salary: user.salary
-            };
-        } else if (user.roleid === 2) {
-            result.roleDetails = {
-                VolunteerRole: user.volunteerrole
-            };
-        } else if (user.roleid === 3) {
-            result.roleDetails = {
-                ParticipantSchoolOrEmployer: user.participantschooloremployer,
-                ParticipantFieldOfInterest: user.participantfieldofinterest,
-                NewsLetter: user.newsletter
-            };
-        }
-
-        const actualQuery = `SELECT 
-    p.PersonID,
-    p.Email,
-    p.FirstName,
-    p.LastName,
-    r.RoleID,
-    r.RoleName,
-    CASE 
-        WHEN r.RoleID = 1 THEN ad.Password
-        WHEN r.RoleID = 2 THEN vd.Password
-        WHEN r.RoleID = 3 THEN pd.Password
-    END AS RolePassword,
-    ad.AdminRole,
-    ad.Salary,
-    vd.VolunteerRole,
-    pd.ParticipantSchoolOrEmployer,
-    pd.ParticipantFieldOfInterest,
-    pd.NewsLetter
-FROM People p
-JOIN PeopleRoles pr ON p.PersonID = pr.PersonID
-JOIN Roles r ON pr.RoleID = r.RoleID
-LEFT JOIN AdminDetails ad ON p.PersonID = ad.PersonID AND r.RoleID = 1
-LEFT JOIN VolunteerDetails vd ON p.PersonID = vd.PersonID AND r.RoleID = 2
-LEFT JOIN ParticipantDetails pd ON p.PersonID = pd.PersonID AND r.RoleID = 3
-WHERE p.Email = '${sEmail.replace(/'/g, "''")}'
-LIMIT 1`;
-
-        res.render('test/query-test', {
-            title: 'Query Testing - Ella Rises',
+        return res.render('test/query-test', {
+            title: "Query Testing - Ella Rises",
             user: req.session.user || null,
-
-            queryResult: null,
-            queryError: null,
-
-            loginError: null,
-            loginResult: result,
-            rawOutput: user,
-            actualQuery: actualQuery,
-            testEmail: sEmail,
-            testPassword: sPassword,
-            hasResults: true
+            results: results.rows,
+            actualQuery: sqlQuery.replace("?", `'${email.replace(/'/g, "''")}'`),
+            error: null,
+            emailInput: email
         });
 
     } catch (err) {
-        console.error("Query test error:", err);
-
-        res.render('test/query-test', {
-            title: 'Query Testing - Ella Rises',
+        return res.render('test/query-test', {
+            title: "Query Testing - Ella Rises",
             user: req.session.user || null,
-
-            queryResult: null,
-            queryError: null,
-
-            loginError: "Query Error: " + err.message,
-            loginResult: null,
-            rawOutput: null,
-            actualQuery: null,
-            testEmail: sEmail,
-            testPassword: sPassword,
-            hasResults: false
+            results: null,
+            actualQuery: sqlQuery.replace("?", `'${email.replace(/'/g, "''")}'`),
+            error: err.message,
+            emailInput: email
         });
     }
 });
