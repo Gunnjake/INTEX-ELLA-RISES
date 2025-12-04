@@ -69,7 +69,6 @@
                     <li><a href="/programs" class="nav-link">Programs</a></li>
                     <li><a href="/#events" class="nav-link">Events</a></li>
                     <li><a href="/register" class="nav-link">Register</a></li>
-                    <li><a href="/contact" class="nav-link">Contact Us</a></li>
                     <li><a href="https://givebutter.com/EllaRises" target="_blank" rel="noopener noreferrer" class="nav-link donate-btn" aria-label="Donate to Ella Rises (opens in new window)">Donate</a></li>
                     <% if (typeof user !== 'undefined' && user) { %>
                         <li><a href="/logout" class="nav-link">Logout</a></li>
@@ -101,7 +100,10 @@
                     
                     <!-- Navigation menu items -->
                     <ul class="admin-nav-menu">
-                        <li><a href="/dashboard" class="admin-nav-link">Dashboard</a></li>
+                        <!-- Dashboard link - only for managers -->
+                        <% if (user.role === 'manager') { %>
+                            <li><a href="/dashboard" class="admin-nav-link">Dashboard</a></li>
+                        <% } %>
                         <li><a href="/events" class="admin-nav-link">Events</a></li>
                         <!-- Manager-only links -->
                         <% if (user.role === 'manager') { %>
@@ -109,7 +111,6 @@
                             <li><a href="/surveys" class="admin-nav-link">Surveys</a></li>
                             <li><a href="/milestones" class="admin-nav-link">Milestones</a></li>
                             <li><a href="/donations" class="admin-nav-link">Donations</a></li>
-                            <li><a href="/newsletter" class="admin-nav-link">Newsletter</a></li>
                             <li><a href="/users" class="admin-nav-link">User Maintenance</a></li>
                         <% } else { %>
                             <!-- Regular user links -->

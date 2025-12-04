@@ -20,7 +20,6 @@
                 <th scope="col">Phone</th>
                 <th scope="col">Location</th>
                 <th scope="col">Latest Milestone</th>
-                <th scope="col">Newsletter</th>
                 <th scope="col">Actions</th>
             </tr>
         </thead>
@@ -33,21 +32,37 @@
                         <td><%= participant.phonenumber || 'N/A' %></td>
                         <td title="<%= (participant.city || '') + (participant.state ? ', ' + participant.state : '') %>"><%= (participant.city || '') + (participant.state ? ', ' + participant.state : '') %></td>
                         <td title="<%= participant.latest_milestone || 'None' %>"><%= participant.latest_milestone || 'None' %></td>
-                        <td><%= participant.newsletter === 1 ? 'Yes' : 'No' %></td>
                         <td>
                             <div class="action-buttons">
+
+                                <!-- Edit participant -->
                                 <a href="/participants/edit/<%= participant.personid %>" class="btn btn-sm btn-primary">Edit</a>
+                            
+                                <!-- View all milestones -->
                                 <a href="/milestones/manage/<%= participant.personid %>" class="btn btn-sm btn-outline-primary">Milestones</a>
-                                <form action="/participants/<%= participant.personid %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this participant? This action cannot be undone.');">
+                            
+                                <!-- Add milestone directly tied to this participant -->
+                                <a href="/admin/milestones/add?personid=<%= participant.personid %>" 
+                                   class="btn btn-sm btn-success">
+                                   Add Milestone
+                                </a>
+                            
+                                <!-- Delete -->
+                                <form action="/participants/<%= participant.personid %>/delete" 
+                                      method="POST" 
+                                      style="display: inline;" 
+                                      onsubmit="return confirm('Are you sure you want to delete this participant? This action cannot be undone.');">
                                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                 </form>
+                            
                             </div>
+                            
                         </td>
                     </tr>
                 <% }); %>
             <% } else { %>
                 <tr>
-                    <td colspan="7" class="text-center" role="status" aria-live="polite">No participants found. Add a participant to get started.</td>
+                    <td colspan="6" class="text-center" role="status" aria-live="polite">No participants found. Add a participant to get started.</td>
                 </tr>
             <% } %>
         </tbody>
