@@ -106,7 +106,7 @@ router.get('/register', (req, res) => {
 
 // Registration - creates account + participant + registration
 router.post('/register', async (req, res) => {
-    const { firstName, lastName, email, phone, age, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, password, confirmPassword, newsletter } = req.body;
+    const { firstName, lastName, email, phone, age, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, password, confirmPassword, newsletter} = req.body;
     
     // Define an object to hold the data for easy redirection in case of error
     const dataForRedirect = { firstName, lastName, email, phone, age, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, newsletter };
