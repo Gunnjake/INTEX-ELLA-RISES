@@ -314,7 +314,12 @@ router.get('/teapot', (req, res) => {
 // Login page
 router.get('/login', (req, res) => {
     if (req.session && req.session.user) {
-        return res.redirect('/dashboard');
+        // Redirect managers to dashboard, participants to events
+        if (req.session.user.role === 'manager') {
+            return res.redirect('/dashboard');
+        } else {
+            return res.redirect('/events');
+        }
     }
     
     res.render('auth/login', {
@@ -592,8 +597,12 @@ router.post('/login-password/:personid', async (req, res) => {
             roles: roleNames.map(r => r.toLowerCase())
         };
 
-        // Redirect to dashboard or returnTo URL
-        const returnTo = req.session.returnTo || '/dashboard';
+        // Redirect to dashboard (managers) or events (participants) or returnTo URL
+        let defaultRedirect = '/dashboard';
+        if (userRole !== 'manager') {
+            defaultRedirect = '/events';
+        }
+        const returnTo = req.session.returnTo || defaultRedirect;
         delete req.session.returnTo;
         return res.redirect(returnTo);
     } catch (err) {
@@ -889,51 +898,24 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                 registrations: []
             });
         } else {
-            // User sees their registrations and surveys (matching FInalTableCreation.sql schema)
-            try {
-                const registrations = await knexInstance('EventRegistrations')
-                    .join('EventOccurrences', 'EventRegistrations.EventOccurrenceID', 'EventOccurrences.EventOccurrenceID')
-                    .join('EventTemplate', 'EventOccurrences.EventTemplateID', 'EventTemplate.EventTemplateID')
-                    .where({ 'EventRegistrations.PersonID': userId })
-                    .select('EventTemplate.EventName as program', 'EventRegistrations.RegistrationCreatedAt as registrationDate')
-                    .orderBy('EventRegistrations.RegistrationCreatedAt', 'desc');
-                
-                const surveys = await knexInstance('Surveys')
-                    .join('EventRegistrations', 'Surveys.RegistrationID', 'EventRegistrations.RegistrationID')
-                    .join('EventOccurrences', 'EventRegistrations.EventOccurrenceID', 'EventOccurrences.EventOccurrenceID')
-                    .where({ 'EventRegistrations.PersonID': userId })
-                    .select('Surveys.*', 'EventOccurrences.EventName as eventName')
-                    .orderBy('Surveys.SurveySubmissionDate', 'desc');
-                
-                res.render('dashboard/index', {
-                    title: 'Dashboard - Ella Rises',
-                    user: req.session.user,
-                    messages: req.session.messages || [],
-                    registrations: registrations || [],
-                    surveys: surveys || []
-                });
-            } catch (dbError) {
-                // Show empty if DB not ready
-                console.log('Database error (tables may not exist):', dbError.message);
-                res.render('dashboard/index', {
-                    title: 'Dashboard - Ella Rises',
-                    user: req.session.user,
-                    messages: req.session.messages || [],
-                    registrations: [],
-                    surveys: []
-                });
-            }
+            // Participants are redirected to events page (no dashboard for participants)
+            res.redirect('/events');
+            return;
         }
         req.session.messages = [];
     } catch (error) {
         console.error('Dashboard error:', error);
-        res.render('dashboard/index', {
-            title: 'Dashboard - Ella Rises',
-            user: req.session.user,
-            messages: [{ type: 'error', text: 'Error loading dashboard data.' }],
-            registrations: [],
-            surveys: []
-        });
+        // If error occurs, redirect participants to events, managers to dashboard
+        if (req.session.user && req.session.user.role === 'manager') {
+            res.render('dashboard/index', {
+                title: 'Dashboard - Ella Rises',
+                user: req.session.user,
+                messages: [{ type: 'error', text: 'Error loading dashboard data.' }],
+                registrations: []
+            });
+        } else {
+            res.redirect('/events');
+        }
     }
 });
 

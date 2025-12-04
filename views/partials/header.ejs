@@ -101,7 +101,10 @@
                     
                     <!-- Navigation menu items -->
                     <ul class="admin-nav-menu">
-                        <li><a href="/dashboard" class="admin-nav-link">Dashboard</a></li>
+                        <!-- Dashboard link - only for managers -->
+                        <% if (user.role === 'manager') { %>
+                            <li><a href="/dashboard" class="admin-nav-link">Dashboard</a></li>
+                        <% } %>
                         <li><a href="/events" class="admin-nav-link">Events</a></li>
                         <!-- Manager-only links -->
                         <% if (user.role === 'manager') { %>
