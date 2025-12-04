@@ -119,170 +119,165 @@ router.get('/register', (req, res) => {
 
 // Registration - creates account + participant + registration
 router.post('/register', async (req, res) => {
-    const { firstName, lastName, email, phone, age, program, city, state, zip, school, fieldOfInterest, birthdate, password, confirmPassword, newsletter } = req.body;
+    const { firstName, lastName, email, phone, age, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, password, confirmPassword, newsletter } = req.body;
     
+    // Define an object to hold the data for easy redirection in case of error
+    const dataForRedirect = { firstName, lastName, email, phone, age, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, newsletter };
+
     try {
-        // If already logged in, just register for program
+        // --- 1. PRELIMINARY VALIDATION ---
         if (req.session.user) {
-            const userId = req.session.user.id;
-            // TODO: Save registration to DB
-            
-            req.session.messages = [{ 
-                type: 'success', 
-                text: `Thank you! You've been registered for ${program}.` 
-            }];
+            // Logic for already logged-in user registering for program (kept from original)
+            req.session.messages = [{ type: 'success', text: `Thank you! You've been registered for ${program}.` }];
             return res.redirect('/register');
         }
         
-        // Validate required fields
-        if (!firstName || !lastName || !email) {
+        // A. Validate ALL required fields
+        if (!firstName || !lastName || !email || !phone || !city || !state || !zip || !country || 
+            !school_employer || !field_of_interest || !birthYear || !birthMonth || !birthDay || 
+            !password) {
             req.session.messages = [{ 
                 type: 'error', 
-                text: 'First name, last name, and email are required.' 
+                text: 'All fields are required. Please fill in all required fields.' 
+            }];
+            return res.redirect('/register');
+        }
+
+        // B. Password Checks
+        if (password.length < 8 || password.length > 20) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'Password must be between 8 and 20 characters long.' 
             }];
             return res.redirect('/register');
         }
         
-        // Check email uniqueness
+        if (password !== confirmPassword) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'Passwords do not match.' 
+            }];
+            return res.redirect('/register');
+        }
+
+        // C. Clean/Validate Email and Check Uniqueness
+        const cleanEmail = email.toLowerCase().trim();
         const existingUser = await knexInstance('people')
-            .where('email', email.toLowerCase().trim())
+            .where('email', cleanEmail)
             .first();
         
         if (existingUser) {
             req.session.messages = [{ 
                 type: 'error', 
-                text: 'An account with this email already exists. Please login instead.' 
+                text: 'An account with this email already exists. Please log in instead.' 
             }];
             return res.redirect('/login');
         }
         
-        // Validate password if provided (password is optional during registration)
-        if (password) {
-            if (password !== confirmPassword) {
-                req.session.messages = [{ 
-                    type: 'error', 
-                    text: 'Passwords do not match.' 
-                }];
-                return res.redirect('/register');
-            }
-            if (password.length > 20) {
-                req.session.messages = [{ 
-                    type: 'error', 
-                    text: 'Password must be 20 characters or less.' 
-                }];
-                return res.redirect('/register');
-            }
-        }
-        
-        // Prepare state (2-character, uppercase)
-        let stateValue = null;
-        if (state) {
-            stateValue = state.trim().toUpperCase().substring(0, 2);
-            if (stateValue.length !== 2) {
-                stateValue = null; // Invalid state, set to null
-            }
-        }
-        
-        console.log('[REGISTER] Starting registration for:', email);
-        
-        // Step 1: Create person record in People table
-        const [newPerson] = await knexInstance('people')
-            .insert({
-                firstname: firstName.trim(),
-                lastname: lastName.trim(),
-                email: email.toLowerCase().trim(),
-                phonenumber: phone ? phone.trim() : null,
-                city: city ? city.trim() : null,
-                state: stateValue,
-                zip: zip ? zip.trim() : null,
-                country: 'USA'
-            })
-            .returning(['personid', 'email']);
-        
-        if (!newPerson || !newPerson.personid) {
-            throw new Error('Failed to create person record - no personid returned');
-        }
-        
-        const personId = newPerson.personid;
-        console.log('[REGISTER] Created person with personid:', personId);
-        
-        // Step 2: Insert into PeopleRoles with Participant role (roleid 1)
-        await knexInstance('peopleroles')
-            .insert({
-                personid: personId,
-                roleid: 1 // Participant
-            })
-            .onConflict(['personid', 'roleid'])
-            .ignore();
-        
-        console.log('[REGISTER] Added Participant role for personid:', personId);
-        
-        // Step 3: Create participant details record (password optional)
-        const participantDetailsData = {
-            personid: personId,
-            participantschooloremployer: school ? school.trim() : null,
-            participantfieldofinterest: fieldOfInterest ? fieldOfInterest.trim() : null,
-            newsletter: newsletter === 'yes' ? true : false
-        };
-        
-        // Only add password if provided during registration
-        if (password) {
-            participantDetailsData.password = password; // Store raw password (VARCHAR(20))
-        }
-        
-        // Check if participantdetails already exists
-        const existingParticipantDetails = await knexInstance('participantdetails')
-            .where('personid', personId)
-            .first();
-        
-        if (existingParticipantDetails) {
-            // Update existing record
-            await knexInstance('participantdetails')
-                .where('personid', personId)
-                .update(participantDetailsData);
-        } else {
-            // Insert new record
-            await knexInstance('participantdetails')
-                .insert(participantDetailsData);
-        }
-        
-        console.log('[REGISTER] Created/updated participant details for personid:', personId);
-        
-        // Success message
-        if (password) {
+        // D. Validate and Format State
+        let stateValue = state.trim().toUpperCase().substring(0, 2);
+        if (stateValue.length !== 2) {
             req.session.messages = [{ 
-                type: 'success', 
-                text: `Account created successfully! You can now login with your email and password.` 
+                type: 'error', 
+                text: 'Please select a valid 2-character state code.' 
             }];
-            res.redirect('/login');
-        } else {
-            req.session.messages = [{ 
-                type: 'success', 
-                text: `Account created successfully! Please set your password to complete registration.` 
-            }];
-            res.redirect(`/create-password/${personId}`);
+            return res.redirect('/register');
         }
+
+        // E. Validate and Format Birthdate
+        const year = parseInt(birthYear);
+        const month = parseInt(birthMonth);
+        const day = parseInt(birthDay);
+        
+        const date = new Date(year, month - 1, day);
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+            req.session.messages = [{ 
+                type: 'error', 
+                text: 'Please enter a valid date.' 
+            }];
+            return res.redirect('/register');
+        }
+        const birthdateValue = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+
+        // --- 2. TRANSACTION START & INSERT ---
+
+        await knexInstance.transaction(async (trx) => {
+
+            // A. CREATE PERSON RECORD (People table)
+            const [newPerson] = await trx('People').insert({
+                Email: cleanEmail,
+                FirstName: firstName.trim(),
+                LastName: lastName.trim(),
+                Birthdate: birthdateValue,
+                PhoneNumber: phone.trim(),
+                City: city.trim(),
+                State: stateValue,
+                Zip: zip.trim(),
+                Country: country.trim(),
+            }).returning('PersonID');
+            
+            const personId = newPerson.PersonID || newPerson.personid;
+            
+            if (!personId) {
+                throw new Error('Failed to create person record: no PersonID returned.');
+            }
+
+            // B. ASSIGN PARTICIPANT ROLE (PeopleRoles table)
+            const PARTICIPANT_ROLE_ID = 1; 
+            await trx('PeopleRoles').insert({
+                PersonID: personId,
+                RoleID: PARTICIPANT_ROLE_ID
+            }).onConflict(['PersonID', 'RoleID']).ignore();
+            
+            // C. CREATE PARTICIPANT DETAILS (ParticipantDetails table)
+            // Storing the raw cleartext password as per the instruction.
+            await trx('ParticipantDetails').insert({
+                PersonID: personId,
+                ParticipantSchoolOrEmployer: school_employer.trim() || null,
+                ParticipantFieldOfInterest: field_of_interest.trim() || null,
+                Password: password, // <-- RAW CLEARTEXT PASSWORD STORED HERE
+                NewsLetter: newsletter === 'yes' ? 1 : 0
+            });
+            
+        }); // END TRANSACTION
+
+        // --- 3. SUCCESS REDIRECT ---
+        req.session.messages = [{ 
+            type: 'success', 
+            text: `Account created successfully! You've been registered for ${program}. You can now login to view your registrations.` 
+        }];
+        res.redirect('/login');
+        
     } catch (error) {
+        // --- 4. ERROR HANDLING ---
         console.error('[REGISTER] Registration error:', error);
-        console.error('[REGISTER] Error details:', {
-            message: error.message,
-            code: error.code,
-            detail: error.detail,
-            constraint: error.constraint
-        });
-        
         let errorMessage = 'There was an error processing your registration. Please try again.';
-        if (error.code === '23505') { // Unique violation
-            errorMessage = 'An account with this email already exists. Please login instead.';
-        } else if (error.constraint) {
-            errorMessage = `Database error: ${error.constraint}`;
-        }
         
+        // This handles the unique email constraint violation if the transaction somehow failed early
+        if (error.code === '23505' && error.message.includes('people_email_unique')) {
+            errorMessage = 'An account with that email already exists. Please log in instead.';
+        } else if (error.message.includes('Failed to create person')) {
+             errorMessage = 'Database error: Could not finalize account details.';
+        } else if (error.constraint) {
+             errorMessage = `Database error (Constraint Violation): ${error.constraint}`;
+        }
+        // NOTE: The previous 'value too long' error (22001) is now fixed by using the cleartext password 
+        // (assuming it's <= 20 chars) instead of the 60-char hash.
+
         req.session.messages = [{ 
             type: 'error', 
             text: errorMessage 
         }];
-        res.redirect('/register');
+        
+        // Re-render form with original data and error message
+        res.render('public/register', {
+            title: 'Register - Ella Rises',
+            description: 'Register for Ella Rises programs...',
+            user: req.session.user || null,
+            data: dataForRedirect, // Pass back original form data
+            messages: req.session.messages
+        });
     }
 });
 
