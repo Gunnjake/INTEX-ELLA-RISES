@@ -3,3 +3,4 @@
 . /opt/elasticbeanstalk/envvars
 export PATH="/opt/elasticbeanstalk/node-install/node-v20.10.0-linux-x64/bin:$PATH"
 
+

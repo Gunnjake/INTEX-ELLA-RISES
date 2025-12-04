@@ -1,41 +1,41 @@
-<%- include('../partials/header', { title: (typeof participantData !== 'undefined' && participantData.id) ? 'Edit Participant' : 'Add New Participant', user: typeof user !== 'undefined' ? user : null }) %>
+<%- include('../partials/header', { title: (typeof participantData !== 'undefined' && participantData && participantData.id) ? 'Edit Participant' : 'Add New Participant', user: typeof user !== 'undefined' ? user : null }) %>
 
 <div class="page-header">
-    <h1><%= (typeof participantData !== 'undefined' && participantData.id) ? 'Edit Participant' : 'Add New Participant' %></h1>
-    <p><%= (typeof participantData !== 'undefined' && participantData.id) ? 'Update participant information' : 'Register a new participant' %></p>
+    <h1><%= (typeof participantData !== 'undefined' && participantData && participantData.id) ? 'Edit Participant' : 'Add New Participant' %></h1>
+    <p><%= (typeof participantData !== 'undefined' && participantData && participantData.id) ? 'Update participant information' : 'Register a new participant' %></p>
 </div>
 
 <div class="form-container">
-    <form action="<%= (typeof participantData !== 'undefined' && participantData.id) ? '/participants/' + participantData.id + '/update' : '/participants/new' %>" method="POST">
+    <form action="<%= (typeof participantData !== 'undefined' && participantData && participantData.id) ? '/participants/' + participantData.id + '/update' : '/participants/new' %>" method="POST">
         <div class="form-group">
             <label for="first_name">First Name *</label>
-            <input type="text" id="first_name" name="first_name" value="<%= typeof participantData !== 'undefined' ? (participantData.first_name || '') : '' %>" required>
+            <input type="text" id="first_name" name="first_name" value="<%= (typeof participantData !== 'undefined' && participantData) ? (participantData.first_name || '') : '' %>" required>
         </div>
         <div class="form-group">
             <label for="last_name">Last Name *</label>
-            <input type="text" id="last_name" name="last_name" value="<%= typeof participantData !== 'undefined' ? (participantData.last_name || '') : '' %>" required>
+            <input type="text" id="last_name" name="last_name" value="<%= (typeof participantData !== 'undefined' && participantData) ? (participantData.last_name || '') : '' %>" required>
         </div>
         <div class="form-group">
             <label for="email">Email *</label>
-            <input type="email" id="email" name="email" value="<%= typeof participantData !== 'undefined' ? (participantData.email || '') : '' %>" required>
+            <input type="email" id="email" name="email" value="<%= (typeof participantData !== 'undefined' && participantData) ? (participantData.email || '') : '' %>" required>
         </div>
         <div class="form-group">
             <label for="phone">Phone</label>
-            <input type="tel" id="phone" name="phone" value="<%= typeof participantData !== 'undefined' ? (participantData.phone || '') : '' %>">
+            <input type="tel" id="phone" name="phone" value="<%= (typeof participantData !== 'undefined' && participantData) ? (participantData.phone || '') : '' %>">
         </div>
         <div class="form-group">
             <label for="program">Program *</label>
             <select id="program" name="program" required>
                 <option value="">Select program</option>
-                <option value="ballet_folklorico" <%= (typeof participantData !== 'undefined' && participantData.program === 'ballet_folklorico') ? 'selected' : '' %>>Ballet Folklorico</option>
-                <option value="mariachi" <%= (typeof participantData !== 'undefined' && participantData.program === 'mariachi') ? 'selected' : '' %>>Mariachi</option>
-                <option value="steam" <%= (typeof participantData !== 'undefined' && participantData.program === 'steam') ? 'selected' : '' %>>STEAM</option>
-                <option value="summit" <%= (typeof participantData !== 'undefined' && participantData.program === 'summit') ? 'selected' : '' %>>Ella Rises Summit</option>
+                <option value="ballet_folklorico" <%= (typeof participantData !== 'undefined' && participantData && participantData.program === 'ballet_folklorico') ? 'selected' : '' %>>Ballet Folklorico</option>
+                <option value="mariachi" <%= (typeof participantData !== 'undefined' && participantData && participantData.program === 'mariachi') ? 'selected' : '' %>>Mariachi</option>
+                <option value="steam" <%= (typeof participantData !== 'undefined' && participantData && participantData.program === 'steam') ? 'selected' : '' %>>STEAM</option>
+                <option value="summit" <%= (typeof participantData !== 'undefined' && participantData && participantData.program === 'summit') ? 'selected' : '' %>>Ella Rises Summit</option>
             </select>
         </div>
         <div class="form-group">
             <label for="enrollment_date">Enrollment Date *</label>
-            <input type="date" id="enrollment_date" name="enrollment_date" value="<%= typeof participantData !== 'undefined' ? (participantData.enrollment_date || '') : '' %>" required>
+            <input type="date" id="enrollment_date" name="enrollment_date" value="<%= (typeof participantData !== 'undefined' && participantData) ? (participantData.enrollment_date || '') : '' %>" required>
         </div>
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Save</button>
@@ -45,5 +45,6 @@
 </div>
 
 <%- include('../partials/footer') %>
+
 
 

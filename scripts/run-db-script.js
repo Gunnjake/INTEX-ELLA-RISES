@@ -25,3 +25,4 @@ exec(command, { env: { ...process.env, PGPASSWORD: process.env.RDS_PASSWORD } },
     console.log('Database script execution completed.');
 });
 
+

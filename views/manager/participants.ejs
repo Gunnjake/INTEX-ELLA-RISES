@@ -19,6 +19,7 @@
                 <th scope="col">Email</th>
                 <th scope="col">Phone</th>
                 <th scope="col">Location</th>
+                <th scope="col">Latest Milestone</th>
                 <th scope="col">Newsletter</th>
                 <th scope="col">Actions</th>
             </tr>
@@ -31,6 +32,7 @@
                         <td><%= participant.Email || participant.email %></td>
                         <td><%= participant.PhoneNumber || participant.phonenumber || participant.phone || 'N/A' %></td>
                         <td><%= (participant.City || participant.city || '') + (participant.State || participant.state ? ', ' + participant.State : '') %></td>
+                        <td><%= participant.latest_milestone || participant.latestMilestone || 'None' %></td>
                         <td><%= participant.NewsLetter === 1 || participant.newsletter === 1 ? 'Yes' : 'No' %></td>
                         <td>
                             <a href="/participants/<%= participant.PersonID || participant.personid || participant.id %>/edit" class="btn btn-sm btn-secondary" aria-label="Edit participant">Edit</a>
@@ -42,7 +44,7 @@
                 <% }); %>
             <% } else { %>
                 <tr>
-                    <td colspan="6" class="text-center" role="status" aria-live="polite">No participants found. Add a participant to get started.</td>
+                    <td colspan="7" class="text-center" role="status" aria-live="polite">No participants found. Add a participant to get started.</td>
                 </tr>
             <% } %>
         </tbody>

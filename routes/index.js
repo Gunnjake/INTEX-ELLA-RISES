@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
                 'EventOccurrences.EventName as event_name',
                 'EventOccurrences.EventDateTimeStart as event_date',
                 'EventOccurrences.EventLocation as location',
-                'EventOccurrences.EventDescription as description',
+                'EventTemplate.EventDescription as description',
                 'EventTemplate.EventType as event_type'
             )
             .where('EventOccurrences.EventDateTimeStart', '>=', new Date())
@@ -50,12 +50,8 @@ router.get('/', async (req, res) => {
             events: events || []
         });
     } catch (error) {
-        // Render without events if DB fails or tables don't exist
-        if (error.code === '42P01' || error.message.includes('does not exist')) {
-            console.log('Database tables not created yet. Run FInalTableCreation.sql to create tables.');
-        } else {
-            console.error('Error fetching events:', error);
-        }
+        // Log error and render without events
+        console.error('Error fetching events:', error);
         res.render('public/landing', {
             title: 'Ella Rises - Empowering the Future Generation of Women',
             description: 'Join Ella Rises in empowering young women through STEAM programs, Ballet Folklorico, Mariachi, and cultural heritage education. Register for programs and events today.',
@@ -919,19 +915,32 @@ router.get('/participants', requireAuth, async (req, res) => {
     const viewPath = isManager ? 'manager/participants' : 'user/participants';
     
     try {
-        // Get participants: People with Participant role + ParticipantDetails
-        const participants = await knexInstance('People')
-            .join('PeopleRoles', 'People.PersonID', 'PeopleRoles.PersonID')
+        // Get participants with latest milestone in ONE optimized query
+        const participants = await knexInstance('People as p')
+            .join('PeopleRoles', 'p.PersonID', 'PeopleRoles.PersonID')
             .join('Roles', 'PeopleRoles.RoleID', 'Roles.RoleID')
-            .join('ParticipantDetails', 'People.PersonID', 'ParticipantDetails.PersonID')
+            .join('ParticipantDetails', 'p.PersonID', 'ParticipantDetails.PersonID')
             .where('Roles.RoleName', 'Participant')
             .select(
-                'People.*',
-                'ParticipantDetails.ParticipantSchoolOrEmployer',
-                'ParticipantDetails.ParticipantFieldOfInterest',
-                'ParticipantDetails.NewsLetter'
+                'p.PersonID',
+                'p.FirstName',
+                'p.LastName',
+                'p.Email',
+                'p.PhoneNumber',
+                'p.City',
+                'p.State',
+                'ParticipantDetails.NewsLetter',
+                knexInstance.raw(`
+                    (
+                        SELECT m2.MilestoneTitle
+                        FROM Milestones m2
+                        WHERE m2.PersonID = p.PersonID
+                        ORDER BY m2.MilestoneDate DESC
+                        LIMIT 1
+                    ) AS latest_milestone
+                `)
             )
-            .orderBy('People.PersonID', 'desc');
+            .orderBy('p.LastName', 'asc');
         
         res.render(viewPath, {
             title: 'Participants - Ella Rises',
@@ -969,13 +978,59 @@ router.post('/participants/new', requireAuth, async (req, res) => {
         return res.status(403).send('Access denied.');
     }
     const { first_name, last_name, email, phone, program, enrollment_date } = req.body;
+    
+    // Validate required fields
+    if (!first_name || !last_name || !email) {
+        req.session.messages = [{ type: 'error', text: 'First name, last name, and email are required.' }];
+        return res.redirect('/participants/new');
+    }
+    
     try {
-        // TODO: Insert into database
+        // Step 1: Insert into People table
+        const [newPerson] = await knexInstance('People')
+            .insert({
+                FirstName: first_name,
+                LastName: last_name,
+                Email: email,
+                PhoneNumber: phone || null
+            })
+            .returning('PersonID');
+        
+        const personId = newPerson.PersonID || newPerson.personid;
+        
+        // Step 2: Get Participant RoleID
+        const participantRole = await knexInstance('Roles')
+            .where('RoleName', 'Participant')
+            .first();
+        
+        if (!participantRole) {
+            throw new Error('Participant role not found in database');
+        }
+        
+        const roleId = participantRole.RoleID || participantRole.roleid;
+        
+        // Step 3: Insert into PeopleRoles
+        await knexInstance('PeopleRoles')
+            .insert({
+                PersonID: personId,
+                RoleID: roleId
+            });
+        
+        // Step 4: Insert into ParticipantDetails
+        await knexInstance('ParticipantDetails')
+            .insert({
+                PersonID: personId,
+                ParticipantSchoolOrEmployer: program || null,
+                ParticipantFieldOfInterest: null,
+                Password: null,
+                NewsLetter: 0
+            });
+        
         req.session.messages = [{ type: 'success', text: 'Participant created successfully' }];
         res.redirect('/participants');
     } catch (error) {
         console.error('Error creating participant:', error);
-        req.session.messages = [{ type: 'error', text: 'Error creating participant. Please try again.' }];
+        req.session.messages = [{ type: 'error', text: 'Error creating participant: ' + error.message }];
         res.redirect('/participants/new');
     }
 });
@@ -1152,13 +1207,51 @@ router.post('/events/new', requireAuth, async (req, res) => {
         return res.status(403).send('Access denied.');
     }
     const { event_name, event_type, event_date, location, description } = req.body;
+    
+    // Validate required fields
+    if (!event_name || !event_type || !event_date || !location) {
+        req.session.messages = [{ type: 'error', text: 'Event name, type, date, and location are required.' }];
+        return res.redirect('/events/new');
+    }
+    
     try {
-        // TODO: Insert into database
+        // Step 1: Create or get EventTemplate
+        let eventTemplate = await knexInstance('EventTemplate')
+            .where('EventName', event_name)
+            .where('EventType', event_type)
+            .first();
+        
+        if (!eventTemplate) {
+            const [newTemplate] = await knexInstance('EventTemplate')
+                .insert({
+                    EventName: event_name,
+                    EventType: event_type,
+                    EventDescription: description || null,
+                    EventDefaultCapacity: null
+                })
+                .returning('EventTemplateID');
+            eventTemplate = newTemplate;
+        }
+        
+        const templateId = eventTemplate.EventTemplateID || eventTemplate.eventtemplateid;
+        
+        // Step 2: Create EventOccurrence
+        const eventDateTimeStart = new Date(event_date);
+        await knexInstance('EventOccurrences')
+            .insert({
+                EventTemplateID: templateId,
+                EventName: event_name,
+                EventDateTimeStart: eventDateTimeStart,
+                EventLocation: location,
+                EventCapacity: null,
+                EventRegistrationDeadline: null
+            });
+        
         req.session.messages = [{ type: 'success', text: 'Event created successfully' }];
         res.redirect('/events');
     } catch (error) {
         console.error('Error creating event:', error);
-        req.session.messages = [{ type: 'error', text: 'Error creating event. Please try again.' }];
+        req.session.messages = [{ type: 'error', text: 'Error creating event: ' + error.message }];
         res.redirect('/events/new');
     }
 });
@@ -1285,21 +1378,31 @@ router.get('/surveys', async (req, res) => {
                 knexInstance.raw('AVG(Surveys.SurveyUsefulnessScore) as avg_usefulness'),
                 knexInstance.raw('AVG(Surveys.SurveyRecommendationScore) as avg_recommendation'),
                 knexInstance.raw('AVG(Surveys.SurveyOverallScore) as avg_overall'),
-                knexInstance.raw("array_agg(DISTINCT EventOccurrences.EventDateTimeStart::text ORDER BY EventOccurrences.EventDateTimeStart DESC) as available_dates")
+                knexInstance.raw("array_agg(DISTINCT EventOccurrences.EventDateTimeStart::text) as available_dates")
             )
             .groupBy('EventOccurrences.EventName')
             .orderBy('EventOccurrences.EventName', 'asc');
         
-        // Process dates array for each group
-        const processedGroups = surveyGroups.map(group => ({
-            eventName: group.EventName || group.eventname,
-            survey_count: parseInt(group.survey_count) || 0,
-            avg_satisfaction: group.avg_satisfaction ? parseFloat(group.avg_satisfaction) : null,
-            avg_usefulness: group.avg_usefulness ? parseFloat(group.avg_usefulness) : null,
-            avg_recommendation: group.avg_recommendation ? parseFloat(group.avg_recommendation) : null,
-            avg_overall: group.avg_overall ? parseFloat(group.avg_overall) : null,
-            dates: Array.isArray(group.available_dates) ? group.available_dates : (group.available_dates ? [group.available_dates] : [])
-        }));
+        // Process dates array for each group - sort dates in JavaScript
+        const processedGroups = surveyGroups.map(group => {
+            let dates = Array.isArray(group.available_dates) ? group.available_dates : (group.available_dates ? [group.available_dates] : []);
+            // Sort dates descending (newest first)
+            dates = dates.sort((a, b) => {
+                const dateA = new Date(a);
+                const dateB = new Date(b);
+                return dateB - dateA; // Descending order
+            });
+            
+            return {
+                eventName: group.EventName || group.eventname,
+                survey_count: parseInt(group.survey_count) || 0,
+                avg_satisfaction: group.avg_satisfaction ? parseFloat(group.avg_satisfaction) : null,
+                avg_usefulness: group.avg_usefulness ? parseFloat(group.avg_usefulness) : null,
+                avg_recommendation: group.avg_recommendation ? parseFloat(group.avg_recommendation) : null,
+                avg_overall: group.avg_overall ? parseFloat(group.avg_overall) : null,
+                dates: dates
+            };
+        });
         
         res.render('manager/surveys', {
             title: 'Post-Event Surveys - Ella Rises',
@@ -1340,13 +1443,54 @@ router.post('/surveys/new', requireAuth, async (req, res) => {
         return res.status(403).send('Access denied.');
     }
     const { participant_id, event_id, satisfaction_score, usefulness_score, recommendation_score, comments, survey_date } = req.body;
+    
+    // Validate required fields
+    if (!participant_id || !event_id || !satisfaction_score || !usefulness_score || !recommendation_score) {
+        req.session.messages = [{ type: 'error', text: 'Participant, event, and all scores are required.' }];
+        return res.redirect('/surveys/new');
+    }
+    
     try {
-        // TODO: Insert into database
+        // Step 1: Check if EventRegistration exists, create if not
+        let registration = await knexInstance('EventRegistrations')
+            .where('PersonID', participant_id)
+            .where('EventOccurrenceID', event_id)
+            .first();
+        
+        if (!registration) {
+            // Create registration if it doesn't exist
+            const [newRegistration] = await knexInstance('EventRegistrations')
+                .insert({
+                    PersonID: participant_id,
+                    EventOccurrenceID: event_id,
+                    RegistrationStatus: 'Registered',
+                    RegistrationAttendedFlag: 1,
+                    RegistrationCreatedAt: new Date()
+                })
+                .returning('RegistrationID');
+            registration = newRegistration;
+        }
+        
+        const registrationId = registration.RegistrationID || registration.registrationid;
+        
+        // Step 2: Create Survey
+        const surveyDate = survey_date ? new Date(survey_date) : new Date();
+        await knexInstance('Surveys')
+            .insert({
+                RegistrationID: registrationId,
+                SurveySatisfactionScore: parseFloat(satisfaction_score),
+                SurveyUsefulnessScore: parseFloat(usefulness_score),
+                SurveyRecommendationScore: parseFloat(recommendation_score),
+                SurveyOverallScore: null,
+                SurveyComments: comments || null,
+                SurveySubmissionDate: surveyDate
+            });
+        
         req.session.messages = [{ type: 'success', text: 'Survey created successfully' }];
         res.redirect('/surveys');
     } catch (error) {
         console.error('Error creating survey:', error);
-        req.session.messages = [{ type: 'error', text: 'Error creating survey. Please try again.' }];
+        req.session.messages = [{ type: 'error', text: 'Error creating survey: ' + error.message }];
         res.redirect('/surveys/new');
     }
 });
@@ -1496,13 +1640,28 @@ router.post('/milestones/new', requireAuth, async (req, res) => {
         return res.status(403).send('Access denied.');
     }
     const { milestone_name, milestone_type, participant_id, achievement_date, status, description } = req.body;
+    
+    // Validate required fields
+    if (!milestone_name || !participant_id || !achievement_date) {
+        req.session.messages = [{ type: 'error', text: 'Milestone name, participant, and achievement date are required.' }];
+        return res.redirect('/milestones/new');
+    }
+    
     try {
-        // TODO: Insert into database
+        // Insert into Milestones table
+        const milestoneDate = new Date(achievement_date);
+        await knexInstance('Milestones')
+            .insert({
+                PersonID: participant_id,
+                MilestoneTitle: milestone_name,
+                MilestoneDate: milestoneDate
+            });
+        
         req.session.messages = [{ type: 'success', text: 'Milestone created successfully' }];
         res.redirect('/milestones');
     } catch (error) {
         console.error('Error creating milestone:', error);
-        req.session.messages = [{ type: 'error', text: 'Error creating milestone. Please try again.' }];
+        req.session.messages = [{ type: 'error', text: 'Error creating milestone: ' + error.message }];
         res.redirect('/milestones/new');
     }
 });
@@ -1711,13 +1870,52 @@ router.post('/donations/new', requireAuth, async (req, res) => {
         return res.status(403).send('Access denied.');
     }
     const { donor_name, donor_email, donor_phone, amount, payment_method, donation_date, notes } = req.body;
+    
+    // Validate required fields
+    if (!donor_name || !donor_email || !amount || !donation_date) {
+        req.session.messages = [{ type: 'error', text: 'Donor name, email, amount, and donation date are required.' }];
+        return res.redirect('/donations/new');
+    }
+    
     try {
-        // TODO: Insert into database
+        // Step 1: Check if Person exists by email, create if not
+        let person = await knexInstance('People')
+            .where('Email', donor_email)
+            .first();
+        
+        if (!person) {
+            // Create new person for donor
+            const nameParts = donor_name.trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            
+            const [newPerson] = await knexInstance('People')
+                .insert({
+                    FirstName: firstName,
+                    LastName: lastName,
+                    Email: donor_email,
+                    PhoneNumber: donor_phone || null
+                })
+                .returning('PersonID');
+            person = newPerson;
+        }
+        
+        const personId = person.PersonID || person.personid;
+        
+        // Step 2: Create Donation
+        const donationDate = new Date(donation_date);
+        await knexInstance('Donations')
+            .insert({
+                PersonID: personId,
+                DonationDate: donationDate,
+                DonationAmount: parseFloat(amount)
+            });
+        
         req.session.messages = [{ type: 'success', text: 'Donation recorded successfully' }];
         res.redirect('/donations');
     } catch (error) {
         console.error('Error creating donation:', error);
-        req.session.messages = [{ type: 'error', text: 'Error recording donation. Please try again.' }];
+        req.session.messages = [{ type: 'error', text: 'Error recording donation: ' + error.message }];
         res.redirect('/donations/new');
     }
 });
