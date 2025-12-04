@@ -100,14 +100,6 @@
             <input type="text" id="interest" name="interest" value="<%= participant.participantfieldofinterest || '' %>">
         </div>
 
-        <div class="form-group">
-            <label for="newsletter">Newsletter Subscription</label>
-            <select id="newsletter" name="newsletter">
-                <option value="true" <%= (participant.newsletter === 1 || participant.newsletter === true) ? "selected" : "" %>>Yes</option>
-                <option value="false" <%= (participant.newsletter !== 1 && participant.newsletter !== true) ? "selected" : "" %>>No</option>
-            </select>
-        </div>
-
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Save Changes</button>
             <a href="/milestones/manage/<%= participant.personid %>" class="btn btn-outline-primary">Manage Milestones</a>

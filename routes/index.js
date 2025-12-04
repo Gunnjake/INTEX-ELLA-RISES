@@ -83,20 +83,7 @@ router.get('/about', (req, res) => {
     });
 });
 
-router.get('/contact', (req, res) => {
-    res.render('public/contact', {
-        title: 'Contact Us - Ella Rises',
-        description: 'Get in touch with the Ella Rises team. We\'d love to hear from you!',
-        user: req.session.user || null
-    });
-});
-
-// Contact form submit
-router.post('/contact', (req, res) => {
-    // TODO: Save to database
-    req.session.messages = [{ type: 'success', text: 'Thank you for contacting us! We will get back to you soon.' }];
-    res.redirect('/contact');
-});
+// Contact page removed
 
 // Programs carousel - program index from query param
 router.get('/programs', (req, res) => {
@@ -119,7 +106,7 @@ router.get('/register', (req, res) => {
 
 // Registration - creates account + participant + registration
 router.post('/register', async (req, res) => {
-    const { firstName, lastName, email, phone, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, password, confirmPassword, newsletter } = req.body;
+    const { firstName, lastName, email, phone, program, city, state, zip, country, school_employer, field_of_interest, birthYear, birthMonth, birthDay, password, confirmPassword } = req.body;
     
     try {
         // If already logged in, just register for program
@@ -137,7 +124,7 @@ router.post('/register', async (req, res) => {
         // Validate ALL required fields
         if (!firstName || !lastName || !email || !phone || !city || !state || !zip || !country || 
             !school_employer || !field_of_interest || !birthYear || !birthMonth || !birthDay || 
-            !password || !newsletter) {
+            !password) {
             req.session.messages = [{ 
                 type: 'error', 
                 text: 'All fields are required. Please fill in all required fields.' 
@@ -262,7 +249,7 @@ router.post('/register', async (req, res) => {
                 personid: personId,
                 participantschooloremployer: school_employer.trim(),
                 participantfieldofinterest: field_of_interest.trim(),
-                newsletter: newsletter === 'yes' ? true : false
+                newsletter: false
             };
             
             // Check if participantdetails already exists
@@ -437,7 +424,6 @@ router.post('/test-login-query', async (req, res) => {
             vd.volunteerrole,
             pd.participantschooloremployer,
             pd.participantfieldofinterest,
-            pd.newsletter
 
         FROM people p
         LEFT JOIN admindetails ad ON p.personid = ad.personid
@@ -1043,39 +1029,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
 // USER MAINTENANCE ROUTES (Manager only)
 // ============================================================================
 
-router.get('/newsletter', requireAuth, requireManager, async (req, res) => {
-    try {
-        // Get newsletter subscribers from ParticipantDetails (matching FInalTableCreation.sql schema)
-        // NewsLetter field is 1 for subscribed, 0 for not subscribed
-        const subscribers = await knexInstance('ParticipantDetails')
-            .join('People', 'ParticipantDetails.PersonID', 'People.PersonID')
-            .where('ParticipantDetails.NewsLetter', 1)
-            .select(
-                'People.Email',
-                'People.FirstName',
-                'People.LastName',
-                'People.PersonID'
-            )
-            .orderBy('People.PersonID', 'desc');
-        
-        res.render('manager/newsletter', {
-            title: 'Newsletter Subscribers - Ella Rises',
-            user: req.session.user,
-            subscribers: subscribers || [],
-            messages: req.session.messages || []
-        });
-        req.session.messages = [];
-    } catch (error) {
-        console.error('Error fetching newsletter subscribers:', error);
-        res.render('manager/newsletter', {
-            title: 'Newsletter Subscribers - Ella Rises',
-            user: req.session.user,
-            subscribers: [],
-            messages: [{ type: 'info', text: 'Database not connected. Newsletter subscribers will appear here once the database is set up.' }]
-        });
-        req.session.messages = [];
-    }
-});
+// Newsletter page removed
 
 router.get('/users', requireAuth, requireManager, async (req, res) => {
     try {
@@ -1562,7 +1516,6 @@ router.get('/participants', requireAuth, async (req, res) => {
                 'p.phonenumber',
                 'p.city',
                 'p.state',
-                'participantdetails.newsletter',
                 knexInstance.raw(`
                     (
                         SELECT m2.milestonetitle
@@ -1711,7 +1664,6 @@ router.get('/participants/edit/:id', requireAuth, requireManager, async (req, re
                 "p.Zip as zip",
                 "pd.ParticipantSchoolOrEmployer as participantschooloremployer",
                 "pd.ParticipantFieldOfInterest as participantfieldofinterest",
-                "pd.NewsLetter as newsletter"
             )
             .first();
 
@@ -1744,8 +1696,7 @@ router.post('/participants/edit/:id', requireAuth, requireManager, async (req, r
         city,
         state,
         school,
-        interest,
-        newsletter
+        interest
     } = req.body;
 
     try {
@@ -1772,7 +1723,7 @@ router.post('/participants/edit/:id', requireAuth, requireManager, async (req, r
                     PersonID: id,
                     ParticipantSchoolOrEmployer: school || null,
                     ParticipantFieldOfInterest: interest || null,
-                    NewsLetter: newsletter === "true" ? 1 : 0
+                    NewsLetter: 0
                 });
         } else {
             await knexInstance("ParticipantDetails")
@@ -1780,7 +1731,7 @@ router.post('/participants/edit/:id', requireAuth, requireManager, async (req, r
                 .update({
                     ParticipantSchoolOrEmployer: school || null,
                     ParticipantFieldOfInterest: interest || null,
-                    NewsLetter: newsletter === "true" ? 1 : 0
+                    NewsLetter: 0
                 });
         }
 

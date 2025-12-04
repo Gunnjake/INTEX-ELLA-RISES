@@ -196,21 +196,6 @@
                 </fieldset>
             <% } %>
 
-            <!-- Newsletter Subscription Section -->
-            <fieldset class="form-section">
-                <legend class="section-header">Newsletter <span aria-label="required">*</span></legend>
-                <div class="form-group">
-                    <label style="display: flex; align-items: center; cursor: pointer; margin-right: 1rem;">
-                        <input type="radio" id="newsletter_yes" name="newsletter" value="yes" required style="width: auto; margin-right: 0.5rem; cursor: pointer;">
-                        <span>Yes</span>
-                    </label>
-                    <label style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="radio" id="newsletter_no" name="newsletter" value="no" required style="width: auto; margin-right: 0.5rem; cursor: pointer;">
-                        <span>No</span>
-                    </label>
-                </div>
-            </fieldset>
-
             <!-- Submit Button -->
             <div class="form-section form-section-submit">
                 <button type="submit" class="btn btn-primary btn-submit" aria-label="<%= typeof user !== 'undefined' && user ? 'Register for selected program' : 'Create account and register for program' %>"><%= typeof user !== 'undefined' && user ? 'Register for Program' : 'Create Account & Register' %></button>
@@ -269,13 +254,12 @@ document.getElementById('registration-form')?.addEventListener('submit', functio
     const zip = document.getElementById('zip');
     const country = document.getElementById('country');
     const program = document.getElementById('program');
-    const newsletter = document.querySelector('input[name="newsletter"]:checked');
     
     if (!firstName?.value?.trim() || !lastName?.value?.trim() || !email?.value?.trim() || 
         !phone?.value?.trim() || !birthYear?.value || !birthMonth?.value || !birthDay?.value ||
         !schoolEmployer?.value?.trim() || !fieldOfInterest?.value?.trim() ||
         !city?.value?.trim() || !state?.value || !zip?.value?.trim() || !country?.value?.trim() ||
-        !program?.value || !newsletter) {
+        !program?.value) {
         e.preventDefault();
         alert('Please fill in all required fields (marked with *).');
         return false;
