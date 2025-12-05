@@ -1,3 +1,5 @@
+// These are out routes that handle out post and gets written by Jake
+// 12/4/25 Evething was working -Blane
 // all application routes
 
 const express = require('express');
