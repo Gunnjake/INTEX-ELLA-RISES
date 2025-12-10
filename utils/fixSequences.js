@@ -36,3 +36,5 @@ async function fixAllSequences(knex) {
 module.exports = { fixEventOccurrenceSequence, fixEventTemplateSequence, fixAllSequences };
 
 
+
+
